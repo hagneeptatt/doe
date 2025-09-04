@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from scipy import stats
 import seaborn as sns
@@ -146,12 +145,6 @@ def validate_model(X_poly, y, model, factor_names, response_name):
     adj_r2 = 1 - (1 - r2) * (n - 1) / (n - p - 1)
     print(f"Adjusted R-squared: {adj_r2:.4f}")
     
-    # Cross-validation
-    if len(y) > 5:  # Only if we have enough data
-        cv_scores = cross_val_score(model, X_poly, y, cv=min(5, len(y)//2), 
-                                   scoring='r2')
-        print(f"Cross-validation R² (mean ± std): {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
-    
     # Residual analysis
     residuals = y - y_pred
     
@@ -160,7 +153,7 @@ def validate_model(X_poly, y, model, factor_names, response_name):
     print(f"\nResidual Analysis:")
     print(f"Shapiro-Wilk test for normality: p = {shapiro_p:.4f}")
     if shapiro_p > 0.05:
-        print("✓ Residuals appear normally distributed")
+        print("Residuals appear normally distributed")
     else:
         print("Residuals may not be normally distributed")
     
@@ -168,7 +161,7 @@ def validate_model(X_poly, y, model, factor_names, response_name):
     dw_stat = np.sum(np.diff(residuals)**2) / np.sum(residuals**2)
     print(f"Durbin-Watson statistic: {dw_stat:.4f}")
     if 1.5 < dw_stat < 2.5:
-        print("✓ No strong evidence of autocorrelation")
+        print("No strong evidence of autocorrelation")
     else:
         print("Possible autocorrelation in residuals")
     
