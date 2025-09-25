@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib as mpl
+mpl.rcParams['svg.fonttype'] = 'none'
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import PolynomialFeatures
@@ -117,7 +119,9 @@ def validate_data(df, factor_columns, response_column):
                 square=True, fmt='.2f')
     plt.title('Factor Correlation Matrix')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"correlation_matrix{response_column}.svg", format="svg", bbox_inches="tight")
+    # plt.show()
+
 
 def validate_model(X_poly, y, model, factor_names, response_name):
     """
@@ -205,7 +209,9 @@ def create_diagnostic_plots(y_actual, y_pred, residuals, response_name):
     axes[1,1].grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"diagnostic_plots{response_name}.svg", format="svg",  bbox_inches="tight")
+    # plt.show()
+
 
 def plot_surface(X, poly, model, factor_names, response_name, factor1_idx, factor2_idx, resolution=30):
     """
@@ -259,10 +265,15 @@ def plot_surface(X, poly, model, factor_names, response_name, factor1_idx, facto
     if fixed_values:
         title += f'\n(Fixed: {", ".join(fixed_values)})'
     ax.set_title(title)
-    
+
+    # Save with unique filename
+    filename = f"surface_{factor_names[factor1_idx]}_vs_{factor_names[factor2_idx]}.svg"
+    plt.savefig(filename, format="svg", bbox_inches="tight")
+
     fig.colorbar(surf, shrink=0.6)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+
 
 def plot_all_combinations(X, poly, model, factor_names, response_name):
     """
@@ -292,7 +303,7 @@ print("STARTING COMPREHENSIVE DOE ANALYSIS")
 print("="*80)
 
 df1, X1, y1, poly1, model1 = analyze_dataset(
-    filename="mew_doe_results.csv",
+    filename="biopint_doe_media_results.csv",
     factor_columns=["pres", "temp", "volt", "dist", "fr"],
     response_column="dia"
 )
@@ -311,7 +322,7 @@ print("CHECKING FOR BIOPRINTING DATA")
 print("="*80)
 
 df2, X2, y2, poly2, model2 = analyze_dataset(
-    filename="bioprint_doe_results.csv",
+    filename="biopint_doe_hama_results.csv",
     factor_columns=["press", "vot"],
     response_column="vol"
 )
