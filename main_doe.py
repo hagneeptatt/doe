@@ -302,19 +302,19 @@ print("="*80)
 print("STARTING COMPREHENSIVE DOE ANALYSIS")
 print("="*80)
 
-df1, X1, y1, poly1, model1 = analyze_dataset(
-    filename="biopint_doe_media_results.csv",
-    factor_columns=["pres", "temp", "volt", "dist", "fr"],
-    response_column="dia"
-)
+# df1, X1, y1, poly1, model1 = analyze_dataset(
+#     filename="bioprint_doe_media_results.csv",
+#     factor_columns=["pres", "temp", "volt", "dist", "fr"],
+#     response_column="dia"
+# )
 
-if model1 is not None:
-    print("\n" + "="*80)
-    print("CREATING ALL RESPONSE SURFACE PLOTS FOR MEW DOE DATA")
-    print("="*80)
+# if model1 is not None:
+#     print("\n" + "="*80)
+#     print("CREATING ALL RESPONSE SURFACE PLOTS FOR MEW DOE DATA")
+#     print("="*80)
     
-    # Plot all 10 possible combinations for 5 factors
-    plot_all_combinations(X1, poly1, model1, ["pres", "temp", "volt", "dist", "fr"], "dia")
+#     # Plot all 10 possible combinations for 5 factors
+#     plot_all_combinations(X1, poly1, model1, ["pres", "temp", "volt", "dist", "fr"], "dia")
 
 # Dataset 2: Bioprinting DOE data
 print("\n" + "="*80)
@@ -322,7 +322,7 @@ print("CHECKING FOR BIOPRINTING DATA")
 print("="*80)
 
 df2, X2, y2, poly2, model2 = analyze_dataset(
-    filename="biopint_doe_hama_results.csv",
+    filename="bioprint_doe_media_results.csv",
     factor_columns=["press", "vot"],
     response_column="vol"
 )
