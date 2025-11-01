@@ -341,8 +341,6 @@ def plot_all_combinations(X, poly, model, factor_names, response_name,
             plot_count += 1
 
 
-
-
 # =================================================================
 # PREDICTING OPTIMAL FACTORS FOR DESIRED RESPONSE
 # =================================================================
@@ -406,8 +404,9 @@ print("=" * 80)
 
 # NOTE: The file 'bioprint_doe_media_results_large_valve.csv' must exist in the current directory.
 df, X, y, poly, model, factor_names, response_name = analyze_dataset(
-    filename="bioprint_doe_media_results_large_valve.csv"
+    filename="bioprint_doe_media_results_small_valve.csv"
 )
+
 
 if model is not None:
     print("\n" + "=" * 80)
