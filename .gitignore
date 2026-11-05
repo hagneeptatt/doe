@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+
+# Outputs are regenerated from configs/ and data/, so only the folder is kept.
+results/*
+!results/.gitkeep
+
+# This repository is public, and run sheets hold experimental results, so they stay off
+# GitHub unless you choose to add one with: git add -f data/<study>/runsheet.csv
+data/*
+!data/.gitkeep
+
+# OS and editors
+.DS_Store
+.vscode/
+.idea/
+
+# Excel lock files, created while a run sheet is open
+~$*
+.~lock.*

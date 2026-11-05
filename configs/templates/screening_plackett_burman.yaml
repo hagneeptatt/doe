@@ -1,0 +1,29 @@
+# TEMPLATE: screening with a Plackett-Burman design.
+# Use when: you have many factors (6 or more) and very few runs to spare.
+# Main effects only. Confirm what you find with a follow-up experiment.
+
+name: my_plackett_burman_study
+description: Which of these ingredients and settings have the largest effect?
+seed: 1
+
+factors:
+  - {name: gelma_wt,    low: 5,   high: 15,  units: "% w/v"}
+  - {name: alginate_wt, low: 0.5, high: 3,   units: "% w/v"}
+  - {name: lap_wt,      low: 0.1, high: 0.5, units: "% w/v"}
+  - {name: pressure,    low: 40,  high: 120, units: kPa}
+  - {name: speed,       low: 4,   high: 16,  units: mm/s}
+  - {name: nozzle_temp, low: 22,  high: 30,  units: °C}
+  - {name: bed_temp,    low: 4,   high: 20,  units: °C}
+  # A categorical factor is fine here, if it has exactly two levels.
+  - {name: crosslinker, levels: [CaCl2, BaCl2]}
+
+responses:
+  - {name: printability, units: Pr, goal: target, target: 1.0, low: 0.85, high: 1.15}
+  - {name: viability,    units: "%", goal: maximise, low: 70, high: 95}
+
+design:
+  type: plackett_burman
+  center_points: 4
+
+model:
+  process: linear

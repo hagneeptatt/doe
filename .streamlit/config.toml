@@ -1,0 +1,18 @@
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f6f8"
+textColor = "#0b0b0b"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+# Run sheets and configs are small, so there's no need to accept large uploads.
+maxUploadSize = 5
+headless = true
+
+[browser]
+# Don't send usage statistics to Streamlit from a research tool.
+gatherUsageStats = false

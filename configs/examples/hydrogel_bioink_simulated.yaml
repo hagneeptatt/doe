@@ -1,0 +1,71 @@
+# WORKED EXAMPLE WITH SIMULATED DATA. Every result comes from the made-up formulas in
+# the simulation section at the bottom. No real material behaves according to them, and
+# the numbers aren't literature values.
+#
+# Try it:
+#   python scripts/1_create_design.py     configs/examples/hydrogel_bioink_simulated.yaml
+#   python scripts/simulate_results.py    configs/examples/hydrogel_bioink_simulated.yaml
+#   python scripts/2_analyse_results.py   configs/examples/hydrogel_bioink_simulated.yaml
+#   python scripts/3_optimise.py          configs/examples/hydrogel_bioink_simulated.yaml
+
+name: hydrogel_bioink_simulated
+description: >
+  Find the polymer blend and printing settings that give a printable, stiff bioink with
+  high cell viability. Blend proportions are mixture components, and printing settings
+  are process factors. Simulated data, for learning only.
+seed: 42
+
+# The three polymers are shares of the total polymer content, so they add up to 1.
+mixture_total: 1.0
+
+factors:
+  - {name: gelma,         type: mixture,    low: 0.40, high: 0.85, units: polymer fraction}
+  - {name: alginate,      type: mixture,    low: 0.10, high: 0.40, units: polymer fraction}
+  - {name: nanocellulose, type: mixture,    low: 0.05, high: 0.30, units: polymer fraction}
+  - {name: pressure,      type: continuous, low: 40,   high: 120,  units: kPa}
+  - {name: speed,         type: continuous, low: 4,    high: 16,   units: mm/s}
+  - {name: nozzle_temp,   type: continuous, low: 22,   high: 30,   units: °C}
+
+responses:
+  - {name: printability,   units: Pr, goal: target,   target: 1.0, low: 0.85, high: 1.15, importance: 3}
+  - {name: filament_width, units: um, goal: target,   target: 400, low: 300,  high: 500,  importance: 2}
+  - {name: modulus,        units: kPa, goal: maximise, low: 5,     high: 25,  importance: 1, transform: log}
+  - {name: viability,      units: "%", goal: maximise, low: 70,    high: 95,  importance: 3}
+
+design:
+  type: i_optimal      # mixture + process factors, so classical designs don't apply
+  runs: 32             # 21 model terms + 7 to check the fit + 4 replicates
+  replicate_runs: 4    # repeated runs measure the true noise
+  blocks: 2            # two batches of bioink, in case batches differ
+
+model:
+  mixture: quadratic         # polymers can have synergy with each other
+  process: quadratic         # printing settings can have an optimum in the middle
+  mixture_process: linear    # the effect of a printing setting can depend on the blend
+  reduce: true               # drop terms the data doesn't support
+  alpha: 0.10
+
+simulation:
+  printability:
+    formula: >
+      0.55 * gelma + 1.15 * alginate + 1.9 * nanocellulose + 0.6 * gelma * nanocellulose
+      - 0.018 * (nozzle_temp - 26) - 0.012 * (nozzle_temp - 26) ** 2
+    noise: 0.03
+  filament_width:
+    formula: >
+      400 + 110 * (pressure - 80) / 40 - 75 * (speed - 10) / 6
+      - 28 * ((pressure - 80) / 40) * ((speed - 10) / 6)
+      - 180 * (nanocellulose - 0.15) + 18 * (nozzle_temp - 26) / 4
+    noise: 15
+  modulus:
+    formula: >
+      exp(1.4 + 1.2 * gelma + 1.0 * alginate + 1.6 * nanocellulose + 1.5 * gelma * alginate
+      - 0.02 * (nozzle_temp - 26))
+    noise_percent: 10
+  viability:
+    formula: >
+      88 - 7 * (pressure - 80) / 40 - 4 * ((pressure - 80) / 40) ** 2
+      - 35 * (nanocellulose - 0.15) - 12 * (alginate - 0.25)
+      + 2 * (nozzle_temp - 26) / 4 - 2 * ((nozzle_temp - 26) / 4) ** 2
+    noise: 2
+    block_sd: 1

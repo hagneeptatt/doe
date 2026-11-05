@@ -1,0 +1,25 @@
+# TEMPLATE: a blend with no tight limits on its components.
+# Use when: the components add up to a fixed total, and any proportion is possible,
+# including pure components. If you set upper limits, use extreme_vertices or i_optimal.
+
+name: my_blend_study
+description: How does the ratio of three polymers affect stiffness?
+seed: 1
+
+mixture_total: 1.0     # for example 1.0 for fractions, or 100 for percentages
+
+factors:
+  - {name: polymer_a, type: mixture, units: fraction}
+  - {name: polymer_b, type: mixture, units: fraction}
+  - {name: polymer_c, type: mixture, units: fraction}
+
+responses:
+  - {name: modulus, units: kPa, goal: maximise, low: 5, high: 30}
+
+design:
+  type: simplex_centroid
+  check_points: true   # extra blends for testing whether the model is adequate
+  replicate_runs: 3    # repeats, to measure noise
+
+model:
+  mixture: special_cubic

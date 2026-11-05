@@ -1,0 +1,23 @@
+# TEMPLATE: analysing an experiment that has already been done.
+# Skip the design step, and go straight to scripts/2_analyse_results.py.
+# Column names in the file must match the factor and response names below. Any other
+# columns are ignored, and if there's a 'run' column it's used to check for drift.
+
+name: my_existing_study
+description: Re-analysis of a completed experiment.
+seed: 1
+
+data_file: data/my_existing_study/results.csv    # relative to the project folder
+
+factors:
+  - {name: temp, low: 20, high: 40, units: °C}
+  - {name: time, low: 10, high: 60, units: min}
+
+responses:
+  - {name: yield_pct, units: "%", goal: maximise, low: 50, high: 90}
+
+design:
+  type: existing
+
+model:
+  process: quadratic

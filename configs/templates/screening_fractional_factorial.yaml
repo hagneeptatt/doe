@@ -1,0 +1,27 @@
+# TEMPLATE: screening with a fractional factorial.
+# Use when: you have 4 to 11 factors and want to find the few that matter.
+# To use it: copy this file, rename it, and replace the example factors and responses.
+
+name: my_screening_study
+description: Which of these six settings affect print quality?
+seed: 1    # keep this: the same seed recreates exactly the same design
+
+factors:
+  # Choose limits you are confident will still print, but wide enough to see an effect.
+  - {name: pressure,    low: 40,  high: 120, units: kPa}
+  - {name: speed,       low: 4,   high: 16,  units: mm/s}
+  - {name: nozzle_temp, low: 22,  high: 30,  units: °C}
+  - {name: bed_temp,    low: 4,   high: 20,  units: °C}
+  - {name: layer_height, low: 0.1, high: 0.3, units: mm}
+  - {name: crosslink_time, low: 30, high: 120, units: s}
+
+responses:
+  - {name: filament_width, units: um, goal: target, target: 400, low: 300, high: 500}
+
+design:
+  type: fractional_factorial
+  resolution: 4        # 4 keeps main effects clear of two-factor interactions. 5 costs more runs but clears those too.
+  center_points: 3     # repeated at the middle of every range, to measure noise and detect curvature
+
+model:
+  process: linear      # main effects only, the usual choice for screening

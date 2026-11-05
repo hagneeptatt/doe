@@ -1,0 +1,13 @@
+# Real experimental data and generated output must not end up in a hosted image.
+archive/
+data/
+results/
+
+# Not needed to run the app
+.git/
+tests/
+scripts/
+**/__pycache__/
+*.egg-info/
+.pytest_cache/
+.DS_Store

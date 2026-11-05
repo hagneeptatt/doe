@@ -1,0 +1,19 @@
+name: doe
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - numpy
+  - pandas
+  - scipy
+  - statsmodels
+  - matplotlib
+  - pyyaml
+  - pytest
+  - pip
+  - pip:
+      - pyDOE3
+      - mpltern
+      - streamlit
+      - -e .

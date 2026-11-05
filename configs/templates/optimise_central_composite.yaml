@@ -1,0 +1,25 @@
+# TEMPLATE: optimising with a central composite design.
+# Use when: you have 2 to 5 numeric factors and every corner of the region can be run.
+
+name: my_central_composite_study
+description: Find the crosslinking conditions that give the stiffest gel.
+seed: 1
+
+factors:
+  - {name: crosslinker_conc, low: 50,  high: 200, units: mM}
+  - {name: crosslink_time,   low: 30,  high: 300, units: s}
+
+responses:
+  - {name: modulus, units: kPa, goal: maximise, low: 5, high: 30, transform: log}
+
+design:
+  type: central_composite
+  # face_centred:  star points sit on your limits, so nothing goes outside them.
+  # circumscribed: star points go beyond your limits. Only use if those settings are possible.
+  # inscribed:     everything stays inside your limits, but the corners move inwards.
+  variant: face_centred
+  center_points: 5
+  blocks: 2            # optional: split into groups, such as two days or two material batches
+
+model:
+  process: quadratic

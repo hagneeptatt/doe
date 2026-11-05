@@ -1,0 +1,23 @@
+# TEMPLATE: optimising with a Box-Behnken design.
+# Use when: you have 3 to 5 numeric factors and some extreme combinations would fail,
+# because this design never puts every factor at an extreme at the same time.
+
+name: my_box_behnken_study
+description: Find the best printing settings for one bioink.
+seed: 1
+
+factors:
+  - {name: pressure,    low: 40, high: 120, units: kPa}
+  - {name: speed,       low: 4,  high: 16,  units: mm/s}
+  - {name: nozzle_temp, low: 22, high: 30,  units: °C}
+
+responses:
+  - {name: filament_width, units: um, goal: target, target: 400, low: 300, high: 500}
+  - {name: viability, units: "%", goal: maximise, low: 70, high: 95}
+
+design:
+  type: box_behnken
+  center_points: 3     # at least 3, to measure noise and check for lack of fit
+
+model:
+  process: quadratic   # includes curvature, which is what makes finding an optimum possible

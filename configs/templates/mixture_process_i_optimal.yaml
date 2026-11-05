@@ -1,0 +1,33 @@
+# TEMPLATE: optimising a blend and its process settings together.
+# Use when: components add up to a fixed total, and process settings also change.
+# This is the usual choice for optimising a bioink formulation and its printing together.
+
+name: my_bioink_study
+description: Find the blend and printing settings for a printable bioink with high viability.
+seed: 1
+
+mixture_total: 1.0
+
+factors:
+  # Limits on the components are common: pure components often can't be printed.
+  - {name: gelma,         type: mixture, low: 0.40, high: 0.85, units: polymer fraction}
+  - {name: alginate,      type: mixture, low: 0.10, high: 0.40, units: polymer fraction}
+  - {name: nanocellulose, type: mixture, low: 0.05, high: 0.30, units: polymer fraction}
+  - {name: pressure,      low: 40, high: 120, units: kPa}
+  - {name: speed,         low: 4,  high: 16,  units: mm/s}
+
+responses:
+  - {name: printability, units: Pr, goal: target, target: 1.0, low: 0.85, high: 1.15, importance: 3}
+  - {name: viability,    units: "%", goal: maximise, low: 70, high: 95, importance: 3}
+  - {name: modulus,      units: kPa, goal: maximise, low: 5, high: 25, importance: 1, transform: log}
+
+design:
+  type: i_optimal
+  replicate_runs: 4    # the number of runs is worked out from the model. Set 'runs' to override it.
+  blocks: 2            # for example, two batches of bioink
+
+model:
+  mixture: quadratic         # polymers can have synergy with each other
+  process: quadratic         # settings can have an optimum in the middle
+  mixture_process: linear    # the effect of a setting can depend on the blend
+  reduce: true

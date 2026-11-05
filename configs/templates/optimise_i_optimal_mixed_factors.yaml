@@ -1,0 +1,32 @@
+# TEMPLATE: optimising with an I-optimal design, the most flexible option.
+# Use when: you have categorical or discrete factors, constraints on combinations, or a
+# fixed run budget that classical designs don't fit.
+
+name: my_i_optimal_study
+description: Choose the nozzle, crosslinker and settings that give the best filament.
+seed: 1
+
+factors:
+  - {name: pressure,    low: 40, high: 120, units: kPa}
+  - {name: speed,       low: 4,  high: 16,  units: mm/s}
+  # A discrete factor is numeric, but only certain values exist.
+  - {name: nozzle_gauge, levels: [22, 25, 27], units: G}
+  # A categorical factor has named options with no numeric order.
+  - {name: crosslinker, levels: [CaCl2, BaCl2]}
+
+# Optional: rule out combinations that can't work.
+constraints:
+  - {expr: pressure / speed, max: 20}
+
+responses:
+  - {name: filament_width, units: um, goal: target, target: 400, low: 300, high: 500}
+
+design:
+  type: i_optimal      # use d_optimal if you care more about understanding effects than predicting
+  runs: 28             # leave this out and a sensible number is chosen for you
+  replicate_runs: 4    # repeats of existing runs, included in the total, to measure noise
+
+model:
+  process: quadratic
+  reduce: true         # drop terms the data doesn't support, keeping the model hierarchical
+  alpha: 0.10

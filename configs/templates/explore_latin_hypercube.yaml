@@ -1,0 +1,24 @@
+# TEMPLATE: exploring unknown behaviour with a Latin hypercube.
+# Use when: you expect complicated behaviour, or the data will train a machine learning model.
+# Runs are spread evenly, with no particular model assumed.
+
+name: my_exploration_study
+description: Map how print quality varies across a wide range of settings.
+seed: 1
+
+factors:
+  - {name: pressure,    low: 40, high: 120, units: kPa}
+  - {name: speed,       low: 4,  high: 16,  units: mm/s}
+  - {name: nozzle_temp, low: 22, high: 30,  units: °C}
+  - {name: bed_temp,    low: 4,  high: 20,  units: °C}
+
+responses:
+  - {name: filament_width, units: um, goal: target, target: 400, low: 300, high: 500}
+
+design:
+  type: latin_hypercube
+  runs: 40             # a common rule of thumb is 10 runs per factor
+  replicate_runs: 3    # repeats, to measure noise
+
+model:
+  process: quadratic   # the built-in analysis uses a polynomial, though you can fit anything to the data

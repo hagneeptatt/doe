@@ -1,0 +1,49 @@
+# WORKED EXAMPLE WITH SIMULATED DATA, showing a different way to describe composition.
+#
+# Here each ingredient is a concentration in water, set independently. Water makes up
+# the rest and is far from running out, so these act as ordinary factors, not a mixture.
+# docs/manual.md explains when to use this instead of a mixture design.
+#
+# It also includes a categorical factor, which rules out classical response surface designs.
+
+name: hydrogel_concentrations_simulated
+description: >
+  Find the ingredient concentrations, crosslinker and printing speed for a printable gel
+  with high viability. Simulated data, for learning only.
+seed: 7
+
+factors:
+  - {name: gelma_wt,    type: continuous,  low: 5,   high: 15,  units: "% w/v"}
+  - {name: alginate_wt, type: continuous,  low: 0.5, high: 3,   units: "% w/v"}
+  - {name: lap_wt,      type: continuous,  low: 0.1, high: 0.5, units: "% w/v"}
+  - {name: speed,       type: continuous,  low: 4,   high: 16,  units: mm/s}
+  - {name: crosslinker, type: categorical, levels: [CaCl2, BaCl2]}
+
+# Too much total polymer can't be extruded through the nozzle.
+constraints:
+  - {expr: gelma_wt + alginate_wt, max: 16}
+
+responses:
+  - {name: printability, units: Pr, goal: target, target: 1.0, low: 0.85, high: 1.15, importance: 2}
+  - {name: viability, units: "%", goal: maximise, low: 70, high: 95, importance: 3}
+
+design:
+  type: i_optimal
+  runs: 34
+  replicate_runs: 4
+
+model:
+  process: quadratic
+  reduce: true
+
+simulation:
+  printability:
+    formula: >
+      0.72 + 0.022 * gelma_wt + 0.06 * alginate_wt + 0.004 * gelma_wt * alginate_wt
+      - 0.006 * (speed - 10) + 0.05 * (crosslinker == "BaCl2")
+    noise: 0.025
+  viability:
+    formula: >
+      99 - 0.55 * gelma_wt - 1.6 * alginate_wt - 25 * (lap_wt - 0.2) ** 2 - 6 * lap_wt
+      - 2.5 * (crosslinker == "BaCl2")
+    noise: 1.8
