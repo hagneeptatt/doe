@@ -669,9 +669,9 @@ These depend only on where the runs are placed, so they're given as multiples of
 
 ### Writing up your methods
 
-You can adapt this wording, keeping only what applies to your study. Get your software versions by running `pip list` in the `doe` environment.
+You can adapt this wording, keeping only what applies to your study. Get your software versions by running `pip list` in the `doe` environment. Each version of doekit has its own DOI, listed on [its Zenodo page](https://doi.org/10.5281/zenodo.23982051).
 
-> A [design type] with [n] runs, including [r] replicates, was generated with doekit [version] (https://github.com/hagneeptatt/doe) using pyDOE3 [version]. Runs were performed in random order[, in [b] blocks]. Each response was fitted by ordinary least squares in statsmodels [version] using a [model] model, with factors in coded units[, and with mixture components as Scheffé polynomials on pseudo-components][, after a [log] transformation][, and reduced by hierarchical backward elimination at p = 0.10]. Models were assessed by analysis of variance, lack-of-fit testing, adjusted and predicted R², and residual analysis. Responses were combined using desirability functions (Derringer & Suich, 1980), and the best settings were found by differential evolution (Storn & Price, 1997) in SciPy [version]. Predictions were tested with [c] independent confirmation runs.
+> A [design type] with [n] runs, including [r] replicates, was generated with doekit [version] (Shields, [version DOI]) using pyDOE3 [version]. Runs were performed in random order[, in [b] blocks]. Each response was fitted by ordinary least squares in statsmodels [version] using a [model] model, with factors in coded units[, and with mixture components as Scheffé polynomials on pseudo-components][, after a [log] transformation][, and reduced by hierarchical backward elimination at p = 0.10]. Models were assessed by analysis of variance, lack-of-fit testing, adjusted and predicted R², and residual analysis. Responses were combined using desirability functions (Derringer & Suich, 1980), and the best settings were found by differential evolution (Storn & Price, 1997) in SciPy [version]. Predictions were tested with [c] independent confirmation runs.
 
 Also report the results listed in [step 10](#step-10-keep-your-records), and cite the original paper for your design type.
 
@@ -729,5 +729,6 @@ These tests show that the calculations are right. They can't show that a particu
 
 **Software.** doekit uses [pyDOE3](https://github.com/relf/pyDOE3) for classical designs, [statsmodels](https://www.statsmodels.org) for regression, [SciPy](https://scipy.org) for search and sampling, [mpltern](https://github.com/yuzie007/mpltern) for blend plots, and [Streamlit](https://streamlit.io) for the web app. To cite the main ones:
 
+- Shields, F. doekit: design, analyse and optimise experiments. Zenodo. https://doi.org/10.5281/zenodo.23982051
 - Seabold, S., Perktold, J. (2010). statsmodels: econometric and statistical modeling with Python. *Proceedings of the 9th Python in Science Conference.*
 - Virtanen, P., et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. *Nature Methods* 17, 261–272.

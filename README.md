@@ -1,5 +1,7 @@
 # doekit
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23982051.svg)](https://doi.org/10.5281/zenodo.23982051)
+
 Design, analyse and optimise experiments for any process, using a web app or from a single config file.
 
 doekit takes you through a whole design of experiments (DOE) study. It helps you choose a design, gives you a randomised run sheet, fits and checks a model for each response, and finds the settings that best meet your goals. It explains its results in plain language, so you don't need a statistics background to use it.
@@ -90,6 +92,14 @@ The tests compare results with published examples, check the design algorithms a
 ## Sharing it
 
 To host the app for other people, see the [hosting guide](docs/hosting.md).
+
+## Citing doekit
+
+If you use doekit in your research, please cite it:
+
+> Shields, F. doekit: design, analyse and optimise experiments. Zenodo. https://doi.org/10.5281/zenodo.23982051
+
+That DOI always leads to the latest version. To cite the exact version you used, take its own DOI from [the Zenodo page](https://doi.org/10.5281/zenodo.23982051). GitHub's **Cite this repository** button gives these details in other formats.
 
 ## Licence
 
