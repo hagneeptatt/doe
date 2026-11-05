@@ -20,18 +20,16 @@ from doekit.workflow import analyse_step, compare_step, create_design_step, opti
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = sorted((ROOT / "configs/examples").glob("*.yaml"))
 TEMPLATES = sorted((ROOT / "configs/templates").glob("*.yaml"))
+PRIVATE_DATA = ROOT / "archive/private"
 
 
 @pytest.fixture
 def project(tmp_path):
-    """A copy of the project's configs and archive data, so tests can't touch real files."""
+    """A copy of the project's configs and any private data, so tests can't touch real files."""
     (tmp_path / "pyproject.toml").write_text("")
     shutil.copytree(ROOT / "configs", tmp_path / "configs")
-    shutil.copytree(
-        ROOT / "archive/original_analysis",
-        tmp_path / "archive/original_analysis",
-        ignore=shutil.ignore_patterns("figures"),
-    )
+    if PRIVATE_DATA.exists():
+        shutil.copytree(PRIVATE_DATA, tmp_path / "archive/private", ignore=shutil.ignore_patterns("figures"))
     return tmp_path
 
 
@@ -63,16 +61,17 @@ def test_concentration_example_with_categorical_factor_and_constraint(project):
     assert best["crosslinker"] in {"CaCl2", "BaCl2"}
 
 
+@pytest.mark.skipif(not PRIVATE_DATA.exists(), reason="the original data isn't in the public repository")
 @pytest.mark.parametrize("name", ["mew_fibre_diameter", "jetting_hama_large_valve"])
 def test_archived_data_can_be_reanalysed(project, name):
-    config = project / f"configs/examples/{name}.yaml"
+    config = project / f"archive/private/configs/{name}.yaml"
     assert analyse_step(config)
     assert len(optimise_step(config))
 
 
 def test_existing_data_config_explains_that_there_is_no_design_to_create(project):
     with pytest.raises(StudyError, match="existing data"):
-        create_design_step(project / "configs/examples/mew_fibre_diameter.yaml")
+        create_design_step(project / "configs/templates/existing_data.yaml")
 
 
 @pytest.mark.parametrize("path", TEMPLATES, ids=lambda p: p.stem)

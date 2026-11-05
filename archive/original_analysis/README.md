@@ -1,24 +1,9 @@
 # Original analysis
 
-The repo as it was before it became `doekit`. Nothing in this folder has been changed, only moved.
+`main_doe.py` is the original single-file analysis that doekit grew out of: a quadratic fit, surface plots and a target search. It has been moved here, but not changed.
 
-| Path | Contents |
-|---|---|
-| `main_doe.py` | The original single-file analysis: quadratic fit, surface plots, target search |
-| `mew_doe_results.csv` | Melt electrowriting study: 5 factors, 46 runs, response `dia` |
-| `bioprint_doe_*_results_*_valve.csv` | Jetting study: `press` and `vot` against `vol` (volume per drop), for HAMA and media, with small and large valves |
-| `figures/` | The figures `main_doe.py` produced from the MEW data |
+The original experimental data isn't in the public repository, so this script won't run from a fresh copy of the project. It needs a CSV called `mew_doe_results.csv` in the folder you run it from, with a label in the first column, the factors next, and the response last.
 
-## Running the original script
+It also needs `scikit-learn` and `seaborn`, which the `doe` environment doesn't include.
 
-It reads its CSV from, and writes its figures to, the current folder. It also needs `scikit-learn` and `seaborn`, which the `doe` environment doesn't include:
-
-```bash
-pip install scikit-learn seaborn
-cd archive/original_analysis
-python main_doe.py
-```
-
-## Re-analysing this data with doekit
-
-`configs/examples/mew_fibre_diameter.yaml` and `configs/examples/jetting_hama_large_valve.yaml` read these CSVs directly, so they don't need to be copied anywhere. `tests/test_validation.py` checks that the new toolkit gives the same predictions as this script's model on the MEW data.
+For new work, use doekit instead. See the [README](../../README.md).

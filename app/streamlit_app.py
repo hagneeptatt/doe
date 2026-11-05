@@ -58,8 +58,8 @@ PAGE_OPTIMISE = "5. Find best settings"
 PAGE_MANUAL = "Manual"
 PAGES = [PAGE_DEFINE, PAGE_DESIGN, PAGE_RESULTS, PAGE_ANALYSE, PAGE_OPTIMISE, PAGE_MANUAL]
 
-# Only simulated examples and blank templates are offered. The configs that read real data
-# from archive/ are left out, so a hosted copy can't show that data to its visitors.
+# Only simulated examples and blank templates are offered, so a hosted copy can't show
+# real data to its visitors.
 EXAMPLE_TITLES = {
     "examples/hydrogel_bioink_simulated": "Worked example: hydrogel blend and printing settings (simulated results)",
     "examples/hydrogel_concentrations_simulated": "Worked example: hydrogel concentrations and crosslinker (simulated results)",

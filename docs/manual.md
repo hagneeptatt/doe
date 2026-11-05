@@ -219,8 +219,8 @@ For blends of 3, 4 and 5 components, a simplex lattice of degree 2 needs 6, 10 a
 | You have eight candidate additives and settings, and budget for about 15 prints. | **Plackett-Burman** with centre points, 15 runs, then optimise the important ones |
 | You want to optimise a three-polymer blend and its printing settings together. | **I-optimal**, mixture and process model, about 30 runs |
 | You're comparing three crosslinkers while optimising concentration and time. | **I-optimal**, because of the categorical factor |
-| You're optimising two jetting settings, such as pressure and valve open time. | **Central composite** (face-centred), or a 3 × 3 full factorial as in the archived jetting study |
-| You're optimising five melt electrowriting settings where all-extreme runs are risky. | **Box-Behnken**, as in the archived study: 40 runs plus 6 centre points |
+| You're optimising two jetting settings, such as pressure and valve open time. | **Central composite** (face-centred), or a 3 × 3 full factorial |
+| You're optimising five melt electrowriting settings where all-extreme runs are risky. | **Box-Behnken**, 40 runs plus 6 centre points |
 | You're collecting data for a machine learning model of a complex process. | **Latin hypercube**, at least 10 runs per factor |
 
 ---
@@ -509,12 +509,12 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 | `src/doekit/` | The toolkit's code |
 | `scripts/` | The command-line steps |
 | `configs/templates/` | Starting points to copy, one for each kind of study |
-| `configs/examples/` | Worked examples, and re-analyses of the archived data |
+| `configs/examples/` | Worked examples with simulated results |
 | `data/<study>/` | Run sheets, which hold your results. Git ignores this folder to keep them off GitHub, **so back them up yourself** |
 | `results/<study>/` | Reports and figures, which can be regenerated at any time |
 | `docs/` | This manual, and the hosting guide |
 | `tests/` | Automatic checks of the toolkit |
-| `archive/` | The original analysis and data |
+| `archive/` | The original analysis script |
 
 ---
 
@@ -556,7 +556,7 @@ Knowing the limits matters as much as knowing the features. These situations nee
 The automatic tests in `tests/` run with `pytest`. They include:
 
 - **Published results.** Coefficients and conclusions match textbook examples: the central composite chemical yield and the 2⁴ filtration rate example from Montgomery, and the yarn elongation mixture from Cornell.
-- **The original analysis.** The melt electrowriting model matches the original analysis script to within rounding error.
+- **The original analysis.** The melt electrowriting model matches the original analysis script to within rounding error. This check only runs where the original data is available, because that data isn't in the public repository.
 - **The design algorithms.** The optimal design search finds the same answer as testing every possibility on small problems, and reproduces a known theoretical result for mixtures. Every tabulated fractional factorial's resolution is recalculated.
 - **Known truths.** On simulated data, the analysis recovers the formulas behind it, and 95% prediction intervals contain about 95% of new runs.
 - **The whole workflow.** Every template and example runs from design through to best settings, and the web app is clicked through automatically.

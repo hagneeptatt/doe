@@ -59,7 +59,7 @@ Run sheets go to `data/my_study/`, and they hold your results. Git ignores that 
 app/                The web app
 configs/
   templates/        Starting points to copy, one for each kind of study
-  examples/         Worked examples, and re-analyses of the archived data
+  examples/         Worked examples with simulated results
 data/               Run sheets, one folder per study
 docs/               The manual, and the hosting guide
 results/            Generated reports and figures, one folder per study
@@ -76,7 +76,7 @@ src/doekit/         The toolkit
   plots.py, report.py Figures and written reports
   simulate.py         Made-up results, for practice
 tests/              Automatic checks, including published textbook results
-archive/            The original analysis and data
+archive/            The original analysis script
 ```
 
 ## Testing
@@ -89,4 +89,8 @@ The tests compare results with published examples, check the design algorithms a
 
 ## Sharing it
 
-To host the app for other people, see the [hosting guide](docs/hosting.md). This repository is public, including the original experimental data in `archive/`.
+To host the app for other people, see the [hosting guide](docs/hosting.md).
+
+## Licence
+
+doekit is released under the [MIT License](LICENSE). Copyright (c) 2026 Fraser Shields.

@@ -15,6 +15,9 @@ venv/
 results/*
 !results/.gitkeep
 
+# The original experimental data, its figures and its configs stay on this computer.
+archive/private/
+
 # This repository is public, and run sheets hold experimental results, so they stay off
 # GitHub unless you choose to add one with: git add -f data/<study>/runsheet.csv
 data/*

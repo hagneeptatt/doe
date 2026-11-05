@@ -23,6 +23,7 @@ from doekit.runsheet import read_runsheet
 from doekit.study import load_study, study_from_config
 
 ROOT = Path(__file__).resolve().parents[1]
+PRIVATE_DATA = ROOT / "archive/private"
 
 
 def _coef(fit, term):
@@ -148,9 +149,10 @@ def test_mixture_coefficients_match_published():
     assert table.loc["Total (corrected)", "sum_sq"] == pytest.approx(134.856, abs=0.001)
 
 
+@pytest.mark.skipif(not PRIVATE_DATA.exists(), reason="the original data isn't in the public repository")
 def test_new_model_reproduces_the_original_script_on_mew_data():
     """The fit behind archive/original_analysis/main_doe.py must be reproduced exactly."""
-    study = load_study(ROOT / "configs/examples/mew_fibre_diameter.yaml")
+    study = load_study(PRIVATE_DATA / "configs/mew_fibre_diameter.yaml")
     frame = read_runsheet(study)
     fit = fit_response(study, frame, study.responses[0])
 
