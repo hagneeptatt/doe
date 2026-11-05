@@ -194,19 +194,35 @@ Both pick runs by computer, for the model you specify. **Use I-optimal if your g
 
 ### How many runs will I need?
 
-A model with more terms needs more runs, and you need spare runs on top to check the model. These counts come from doekit, including the centre points shown.
+It depends on what you're trying to learn, so there's a table for each purpose. These counts come from doekit. A blank means that design isn't available for that number of factors.
 
-| Factors | Terms in a quadratic model | Full factorial (+3 centre) | Fractional res. IV (+3) | Fractional res. V (+3) | Plackett-Burman (+3) | Box-Behnken (+3) | Central composite (+4) | I-optimal (default) |
-|---|---|---|---|---|---|---|---|---|
-| 2 | 6 | 7 | | | 7 | | 12 | 14 |
-| 3 | 10 | 11 | | | 7 | 15 | 18 | 18 |
-| 4 | 15 | 19 | 11 | | 11 | 27 | 28 | 23 |
-| 5 | 21 | 35 | 19 | 19 | 11 | 43 | 46 | 29 |
-| 6 | 28 | 67 | 19 | 35 | 11 | 63 | 80 | 36 |
-| 7 | 36 | 131 | 19 | 67 | 11 | 87 | 146 | 44 |
-| 8 | 45 | 259 | 19 | 67 | 15 | 115 | 276 | 53 |
+**To find out which factors matter (screening).** These designs test each factor at two settings, so they can't locate an optimum. Each count includes 3 repeated runs at the centre of the ranges, which measure noise and can reveal curvature.
 
-Screening designs can't fit a quadratic model, so compare like with like: use the left-hand designs to screen, and the right-hand ones to optimise.
+| Factors | Full factorial (2 levels) | Fractional, resolution IV | Fractional, resolution V | Plackett-Burman |
+|---|---|---|---|---|
+| 2 | 7 | | | 7 |
+| 3 | 11 | | | 7 |
+| 4 | 19 | 11 | | 11 |
+| 5 | 35 | 19 | 19 | 11 |
+| 6 | 67 | 19 | 35 | 11 |
+| 7 | 131 | 19 | 67 | 11 |
+| 8 | 259 | 19 | 67 | 15 |
+
+**To find the best settings (optimising).** These designs use at least three settings per factor, so they can fit a quadratic model, which needs at least as many runs as it has terms.
+
+| Factors | Terms in a quadratic model | Full factorial (3 levels) | Box-Behnken | Central composite | I-optimal |
+|---|---|---|---|---|---|
+| 2 | 6 | 9 | | 12 | 14 |
+| 3 | 10 | 27 | 15 | 18 | 18 |
+| 4 | 15 | 81 | 27 | 28 | 23 |
+| 5 | 21 | 243 | 43 | 46 | 29 |
+| 6 | 28 | 729 | 63 | 80 | 36 |
+| 7 | 36 | 2187 | 87 | 146 | 44 |
+| 8 | 45 | Too many | 115 | 276 | 53 |
+
+Box-Behnken counts include 3 centre points, and central composite counts include 4. I-optimal counts include 4 extra runs to check the model and 4 replicates. The 3-level full factorial has no repeats, so you'd need to add some to measure noise.
+
+Don't compare numbers between the two tables. A two-level factorial can need fewer runs than a Box-Behnken design because it answers a simpler question: which factors matter, not where the best settings are.
 
 For blends of 3, 4 and 5 components, a simplex lattice of degree 2 needs 6, 10 and 15 runs, and a simplex centroid needs 7, 15 and 31, before adding check points or replicates. A blend with process factors usually needs an optimal design: the worked example in section 6 uses 32 runs for 3 components and 3 process settings.
 

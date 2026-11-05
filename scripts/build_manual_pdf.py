@@ -45,6 +45,7 @@ h1 { font-size: 23pt; line-height: 1.2; margin: 0 0 14pt; }
 h2 { font-size: 16pt; line-height: 1.25; margin: 0 0 9pt; break-before: page; break-after: avoid; }
 h3 { font-size: 12pt; margin: 15pt 0 5pt; break-after: avoid; }
 p { margin: 0 0 7pt; }
+p:has(+ table) { break-after: avoid; }
 ul, ol { margin: 0 0 7pt; padding-left: 18pt; }
 li { margin-bottom: 3pt; }
 li > ul, li > ol { margin: 3pt 0 0; }
@@ -55,7 +56,7 @@ pre { background: #f5f6f8; padding: 7pt 9pt; margin: 0 0 8pt; white-space: pre-w
 pre code { padding: 0; background: none; }
 blockquote { margin: 0 0 8pt; padding: 3pt 0 3pt 10pt; border-left: 2pt solid #c3c2b7; color: #52514e; }
 blockquote p { margin: 0; }
-table { width: 100%; border-collapse: collapse; margin: 0 0 10pt; font-size: 8.8pt; line-height: 1.35; }
+table { width: 100%; border-collapse: collapse; margin: 0 0 10pt; font-size: 8.8pt; line-height: 1.35; break-inside: avoid; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
 th { text-align: left; background: #f5f6f8; font-weight: bold; }
