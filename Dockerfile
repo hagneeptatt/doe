@@ -11,7 +11,8 @@ FROM python:3.12-slim
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     HOME=/tmp \
-    MPLCONFIGDIR=/tmp/matplotlib
+    MPLCONFIGDIR=/tmp/matplotlib \
+    DOEKIT_AUTOSAVE=off
 
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./

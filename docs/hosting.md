@@ -4,7 +4,9 @@ This guide is for whoever looks after a shared copy of the app. People using it 
 
 ## Before you host it
 
-**Decide where unpublished data may go.** People will upload experimental results to the app, and those results pass through whichever server hosts it. The app doesn't save them: they stay in memory for the browser session and are gone when it ends. They're still on that server while in use, so check your institute's data policy. An institute-run server is the safest default.
+**Decide where unpublished data may go.** People will upload experimental results to the app, and those results pass through whichever server hosts it. A hosted copy doesn't save them: they stay in memory for the browser session and are gone when it ends. They're still on that server while in use, so check your institute's data policy. An institute-run server is the safest default.
+
+**Autosave is only for people using the computer the app runs on.** Their studies are saved in `data/app_studies/`. Visitors from other computers aren't saved, so they can't see each other's studies, and they use **Download my study** instead. The container image turns autosave off completely with `DOEKIT_AUTOSAVE=off`. Set that yourself anywhere the app sits behind a proxy on the same machine, because every visitor then looks local.
 
 **This repository is public.** Git ignores `data/` and `archive/private/`, so run sheets and private data aren't uploaded by accident. Don't add unpublished results to a public copy of this repository.
 

@@ -64,6 +64,11 @@ def _clean_numbers(series: pd.Series) -> pd.Series:
     return pd.to_numeric(text, errors="coerce")
 
 
+def notes_as_text(series: pd.Series) -> pd.Series:
+    """Make a notes column text. An empty column reads as numbers, but notes are always text."""
+    return series.map(lambda value: "" if pd.isna(value) else str(value)).astype(object)
+
+
 def clean_runsheet(study: Study, sheet: pd.DataFrame, source: str = "The run sheet") -> pd.DataFrame:
     """Check a run sheet against its study, and explain clearly anything that's wrong."""
     sheet = sheet.copy()
@@ -125,6 +130,9 @@ def clean_runsheet(study: Study, sheet: pd.DataFrame, source: str = "The run she
                 f"{source}: the mixture components should add up to {study.mixture_total:g}, "
                 f"but don't in row(s) {rows}."
             )
+
+    if "notes" in sheet:
+        sheet["notes"] = notes_as_text(sheet["notes"])
     return sheet
 
 

@@ -372,6 +372,19 @@ streamlit run app/streamlit_app.py --server.address localhost
 
 The app opens in your browser. If it doesn't, go to <http://localhost:8501>. `--server.address localhost` keeps it private to your computer. Without it, other people on your network may be able to open the app. To stop it, press Ctrl+C in the terminal.
 
+**To update to a new version:**
+
+1. Stop the app, then download and unzip the new version as in step 2 above. Keep your old folder for now.
+2. If you have saved studies, copy `data/app_studies` from your old folder into the `data` folder of the new one.
+3. Open a terminal in the new folder and run the commands below. This matters because the `doe` environment keeps using the code in your old folder until you do.
+
+```bash
+conda activate doe
+pip install -e .
+```
+
+From now on, start the app from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
+
 ### The steps
 
 The steps are listed in the sidebar:
@@ -385,7 +398,11 @@ The steps are listed in the sidebar:
 | **5. Find best settings** | Get the best settings with predicted ranges, try your own settings, and download everything |
 | **Manual** | This document |
 
-**Saving your work.** The app doesn't save anything between sessions, and closing the page loses your work. Download the **study config** and **run sheet** after step 2, and the run sheet again after entering results. To carry on later, load the config in step 1 and upload the run sheet in step 3.
+**Saving your work on your own computer.** The app saves your study automatically as you go, including half-filled tables, design settings, results and best settings. If you refresh or close the page, or the app stops, start it again and choose the study under **Carry on with a saved study** in step 1.
+
+Studies are kept in `data/app_studies/`, with one folder for each study. Git ignores this folder, so back it up yourself. If a new design, an upload or simulated results replace existing results, the previous version is kept in that study's `history` folder. To go back to one, load it with **Load saved study** in step 1.
+
+**Saving your work on a hosted copy.** Nothing is saved on the server, and refreshing or closing the page loses your work, so use **Download my study** in the sidebar regularly. That one file holds everything, and you can load it in step 1 on any computer.
 
 **Existing data.** To analyse an experiment you've already done, define its factors and responses in step 1, then upload the data in step 3. Column names must match the factor and response names exactly. You can skip step 2.
 
@@ -511,6 +528,7 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 | `configs/templates/` | Starting points to copy, one for each kind of study |
 | `configs/examples/` | Worked examples with simulated results |
 | `data/<study>/` | Run sheets, which hold your results. Git ignores this folder to keep them off GitHub, **so back them up yourself** |
+| `data/app_studies/` | Studies saved automatically by the app. Git ignores this folder, **so back it up yourself** |
 | `results/<study>/` | Reports and figures, which can be regenerated at any time |
 | `docs/` | This manual, and the hosting guide |
 | `tests/` | Automatic checks of the toolkit |

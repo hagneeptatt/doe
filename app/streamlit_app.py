@@ -3,8 +3,11 @@
 Start it with:   streamlit run app/streamlit_app.py
 
 Every calculation is done by the doekit package, the same code the scripts use. This
-file only handles the screens. Nothing is saved on the server: a study lives in the
-browser session until it's downloaded, so several people can use one copy of the app.
+file only handles the screens.
+
+For someone using the app on the computer it's running on, each study is saved to disk as
+it changes. Anyone connecting from another computer gets nothing saved on the server, so
+several people can use one copy of the app without seeing each other's studies.
 """
 
 from __future__ import annotations
@@ -12,9 +15,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import tempfile
 import traceback
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -38,7 +43,18 @@ from doekit.designs import DESIGNS, Design, create_design
 from doekit.evaluate import evaluate_design
 from doekit.model import CROSSING_ORDERS, MIXTURE_ORDERS, PROCESS_ORDERS, model_terms
 from doekit.optimise import desirability_limits, find_optimum
-from doekit.runsheet import build_runsheet, clean_runsheet, read_runsheet_bytes
+from doekit.runsheet import build_runsheet, clean_runsheet, notes_as_text, read_runsheet_bytes
+from doekit.saved_study import (
+    build_document,
+    dump_document,
+    is_saved_study,
+    keep_earlier_version,
+    list_saved_studies,
+    new_save_path,
+    read_document,
+    read_table,
+    save_document,
+)
 from doekit.simulate import SIMULATED_NOTE, simulate_responses
 from doekit.study import FACTOR_KINDS, GOALS, TRANSFORMS, Study, StudyError, study_from_config, without_server_paths
 from doekit.workflow import save_fit_outputs, save_optimum_outputs
@@ -203,7 +219,7 @@ def _hash(value) -> str:
 def _sheet_hash() -> str:
     if ss.sheet is None:
         return "none"
-    return _hash(ss.sheet.astype(str).to_dict("list"))
+    return _hash(ss.sheet.to_csv(index=False))
 
 
 def _factor_signature(config: dict) -> str:
@@ -257,6 +273,11 @@ def init_state() -> None:
         "version": 0,
         "last_page": None,
         "config_loaded": False,
+        "save_path": None,
+        "saved_fingerprint": None,
+        "skip_next_save": False,
+        "saved_at": None,
+        "save_error": None,
     }
     for key, value in defaults.items():
         if key not in ss:
@@ -300,21 +321,30 @@ def set_sheet(sheet: pd.DataFrame | None) -> None:
     refresh_editors()
 
 
-def load_config(config: dict, source: str) -> None:
-    config = without_server_paths(config)
-    study_from_config(config, ROOT, source)  # check it first, so a bad file changes nothing
-    ss.study_name = config["name"]
-    ss.study_description = str(config.get("description", "")).strip()
-    ss.study_seed = int(config.get("seed") or 1)
-    ss.mixture_total = float(config.get("mixture_total", 1.0))
-    ss.factors_current = factors_to_table(config["factors"])
-    ss.responses_current = responses_to_table(config.get("responses") or [])
-    ss.constraints_current = _table(config.get("constraints") or [], CONSTRAINT_COLUMNS, ("min", "max"))
+def _apply_config(config: dict) -> None:
+    """Put a study's settings on screen. Everything is read first, so a bad file changes nothing."""
+    name = config.get("name") or "my_study"
+    description = str(config.get("description", "")).strip()
+    seed = int(config.get("seed") or 1)
+    mixture_total = float(config.get("mixture_total", 1.0))
+    factors = factors_to_table(config.get("factors") or [])
+    responses = responses_to_table(config.get("responses") or [])
+    constraints = _table(config.get("constraints") or [], CONSTRAINT_COLUMNS, ("min", "max"))
     design = dict(config.get("design") or {})
-    ss.design_settings = design
     model = config.get("model") or {}
-    ss.model_settings = {"process": model} if isinstance(model, str) else dict(model)
-    ss.simulation = dict(config.get("simulation") or {})
+    model = {"process": model} if isinstance(model, str) else dict(model)
+    simulation = dict(config.get("simulation") or {})
+
+    ss.study_name = name
+    ss.study_description = description
+    ss.study_seed = seed
+    ss.mixture_total = mixture_total
+    ss.factors_current = factors
+    ss.responses_current = responses
+    ss.constraints_current = constraints
+    ss.design_settings = design
+    ss.model_settings = model
+    ss.simulation = simulation
     ss.pop("manual_kind", None)  # start the design dropdown from this study's own design
     ss.recommendations = None
     ss.design_notes = []
@@ -324,6 +354,121 @@ def load_config(config: dict, source: str) -> None:
     ss.fit_cache = {}
     ss.figure_cache = {}
     set_sheet(None)
+
+
+def load_config(config: dict, source: str) -> None:
+    """Start a new study from an example, a template or a config file."""
+    config = without_server_paths(config)
+    study_from_config(config, ROOT, source)  # check it first, so a bad file changes nothing
+    _apply_config(config)
+    # A new study gets its own save, once there's something in it worth keeping.
+    ss.save_path = None
+    ss.skip_next_save = True
+
+
+# ---------------------------------------------------------------------- saving
+def autosave_folder() -> Path | None:
+    """Find where this visitor's studies are saved, or return None if they shouldn't be.
+
+    Saving to disk is for someone using the app on the computer it's running on. On a shared
+    server it would show one person's studies to the next, so visitors from other computers
+    aren't saved, and setting DOEKIT_AUTOSAVE=off turns it off for everyone.
+    """
+    if os.environ.get("DOEKIT_AUTOSAVE", "on").strip().lower() in ("off", "0", "false", "no"):
+        return None
+    if st.context.ip_address is not None:  # Streamlit gives None for this computer
+        return None
+    return Path(os.environ.get("DOEKIT_SAVE_DIR") or ROOT / "data" / "app_studies")
+
+
+def has_work() -> bool:
+    return bool(table_to_factors(ss.factors_current) or table_to_responses(ss.responses_current) or ss.sheet is not None)
+
+
+def current_document() -> dict:
+    """Gather the whole study, including the choices made along the way."""
+    state = {
+        "design_kind": ss.design_kind,
+        "design_notes": list(ss.design_notes),
+        "design_signature": ss.design_signature,
+        "solutions_key": ss.solutions_key,
+        "objective": ss.get("objective"),
+        "max_runs": int(ss.get("max_runs") or 0),
+        "signal_to_noise": float(ss.get("signal_to_noise") or 2.0),
+        "avoid_extremes": bool(ss.get("avoid_extremes", False)),
+    }
+    return build_document(current_config(), ss.sheet, ss.solutions, state)
+
+
+def autosave() -> None:
+    """Save the study if it has changed. A failure to save must never stop someone working."""
+    folder = autosave_folder()
+    if folder is None or not has_work():
+        return
+    try:
+        document = current_document()
+        fingerprint = _hash({key: value for key, value in document.items() if key != "saved_at"})
+        if ss.skip_next_save:  # just loaded, so there's nothing new to keep yet
+            ss.skip_next_save = False
+            ss.saved_fingerprint = fingerprint
+            return
+        if fingerprint == ss.saved_fingerprint:
+            return
+        if ss.save_path is None:
+            ss.save_path = new_save_path(folder, document["config"]["name"])
+        save_document(ss.save_path, document)
+    except Exception as error:
+        ss.save_error = str(error)
+        return
+    ss.saved_fingerprint = fingerprint
+    ss.saved_at = datetime.now()
+    ss.save_error = None
+
+
+def keep_earlier_results() -> None:
+    """Keep a copy of the save before something replaces its results."""
+    if ss.save_path is not None and has_results():
+        try:
+            keep_earlier_version(ss.save_path)
+        except OSError as error:
+            ss.save_error = str(error)
+
+
+def _restored_sheet(text: str | None, config: dict) -> pd.DataFrame | None:
+    if not text:
+        return None
+    sheet = read_table(text)
+    for entry in config.get("responses") or []:
+        name = entry.get("name")
+        if name in sheet:
+            sheet[name] = pd.to_numeric(sheet[name], errors="coerce").astype(float)
+    sheet["notes"] = notes_as_text(sheet["notes"]) if "notes" in sheet else ""
+    return sheet
+
+
+def restore_document(document: dict, save_path: Path | None) -> None:
+    """Bring back a saved study, exactly as it was left."""
+    config = without_server_paths(document.get("config") or {})
+    state = document.get("state") or {}
+    sheet = _restored_sheet(document.get("runsheet_csv"), config)
+    solutions = read_table(document["solutions_csv"]) if document.get("solutions_csv") else None
+
+    _apply_config(config)
+    set_sheet(sheet)
+    ss.design_kind = state.get("design_kind")
+    ss.design_notes = list(state.get("design_notes") or [])
+    ss.design_signature = state.get("design_signature")
+    ss.objective = state.get("objective") if state.get("objective") in OBJECTIVES else None
+    ss.max_runs = int(state.get("max_runs") or 0)
+    ss.signal_to_noise = float(state.get("signal_to_noise") or 2.0)
+    ss.avoid_extremes = bool(state.get("avoid_extremes", False))
+    ss.solutions = solutions
+    ss.solutions_key = state.get("solutions_key")
+    # A study loaded from this computer carries on in its own save. An uploaded one gets a new one.
+    ss.save_path = save_path
+    ss.skip_next_save = save_path is not None
+    ss.pending_page = PAGE_RESULTS if sheet is not None else PAGE_DEFINE
+    ss.notice = f"Carrying on with **{ss.study_name}**. Your settings, design and results are back."
 
 
 def go_to(page: str) -> None:
@@ -396,6 +541,34 @@ def example_configs() -> dict[str, Path]:
     return {title: ROOT / "configs" / f"{stem}.yaml" for stem, title in EXAMPLE_TITLES.items() if (ROOT / "configs" / f"{stem}.yaml").exists()}
 
 
+LOAD_ERRORS = (yaml.YAMLError, AttributeError, TypeError, KeyError, ValueError)
+
+
+def _saved_studies_section() -> None:
+    """Offer the studies saved on this computer, so work can carry on after a refresh or a crash."""
+    folder = autosave_folder()
+    if folder is None:
+        return
+    saved = [study for study in list_saved_studies(folder) if study.path != ss.save_path]
+    if not saved:
+        return
+    st.markdown("**Carry on with a saved study**")
+    left, right = st.columns([4, 1], vertical_alignment="bottom")
+    with left:
+        index = st.selectbox(
+            "Saved on this computer", list(range(len(saved))), format_func=lambda i: saved[i].label, key="saved_choice"
+        )
+    with right:
+        carry_on = st.button("Carry on", key="resume", type="primary")
+    if carry_on:
+        try:
+            restore_document(read_document(saved[index].path), saved[index].path)
+            st.rerun()
+        except LOAD_ERRORS as error:
+            st.error(f"Couldn't load that study. {error}")
+    st.divider()
+
+
 def page_define() -> None:
     st.header(PAGE_DEFINE)
     st.write(
@@ -404,6 +577,7 @@ def page_define() -> None:
     )
 
     with st.expander("Start from an example, a template or a saved study", expanded=not ss.config_loaded):
+        _saved_studies_section()
         confirm = True
         if has_results():
             confirm = st.checkbox("Replace my current study and its results", key="confirm_load")
@@ -415,12 +589,18 @@ def page_define() -> None:
                 load_config(yaml.safe_load(examples[choice].read_text(encoding="utf-8")), "This example")
                 st.rerun()
         with right:
-            uploaded = st.file_uploader("Saved study (config file)", type=["yaml", "yml"], key="config_upload")
+            uploaded = st.file_uploader(
+                "Study file (from 'Download my study'), or a config file", type=["yaml", "yml"], key="config_upload"
+            )
             if st.button("Load saved study", key="load_upload", disabled=(uploaded is None or not confirm)):
                 try:
-                    load_config(yaml.safe_load(uploaded.getvalue().decode("utf-8")), "This file")
+                    data = yaml.safe_load(uploaded.getvalue().decode("utf-8"))
+                    if is_saved_study(data):
+                        restore_document(data, None)
+                    else:
+                        load_config(data, "This file")
                     st.rerun()
-                except (StudyError, yaml.YAMLError, UnicodeDecodeError, AttributeError, TypeError) as error:
+                except LOAD_ERRORS as error:
                     st.error(f"Couldn't load that file. {error}")
 
     left, right = st.columns([3, 1])
@@ -580,6 +760,7 @@ def _create(study: Study, design_settings: dict, model: dict | None) -> None:
     ss.design_signature = _factor_signature(current_config())
     ss.fit_cache = {}
     ss.figure_cache = {}
+    keep_earlier_results()
     set_sheet(build_runsheet(updated, design))
 
 
@@ -759,7 +940,9 @@ def page_results() -> None:
         "Upload a filled-in run sheet, or data from an experiment you've already done (CSV)",
         type=["csv", "txt"], key="sheet_upload",
     )  # fmt: skip
-    if uploaded is not None:
+    if uploaded is None:
+        ss.pop("sheet_upload_signature", None)  # so the same file can be uploaded again later
+    else:
         signature = _hash([uploaded.name, hashlib.sha1(uploaded.getvalue()).hexdigest()])
         if ss.get("sheet_upload_signature") != signature:
             try:
@@ -770,6 +953,7 @@ def page_results() -> None:
                 ss.design_signature = _factor_signature(current_config())
                 ss.fit_cache = {}
                 ss.figure_cache = {}
+                keep_earlier_results()
                 set_sheet(sheet)
                 st.rerun()
             except StudyError as error:
@@ -815,6 +999,7 @@ def page_results() -> None:
         if has_results() and not edited["notes"].astype(str).str.contains("SIMULATED").all():
             replace_ok = columns[1].checkbox("Replace my results with simulated ones", key="confirm_simulate")
         if columns[1].button("Fill with simulated results (practice only)", key="simulate", disabled=not replace_ok):
+            keep_earlier_results()
             set_sheet(simulate_responses(study, edited, int(ss.study_seed)))
             st.rerun()
         st.caption(f"This study has built-in made-up formulas for practice. Simulated rows are marked '{SIMULATED_NOTE}'.")
@@ -1178,7 +1363,8 @@ def _progress() -> list[tuple[bool, str]]:
     ]
 
 
-def sidebar() -> str:
+def sidebar():
+    """Draw the navigation, and return the chosen page and a space for the rest of the sidebar."""
     with st.sidebar:
         st.title("doekit")
         st.caption("Design, analyse and optimise experiments")
@@ -1186,26 +1372,56 @@ def sidebar() -> str:
         # options, so changing them would send people back to the first step.
         page = st.radio("Steps", PAGES, key="page", label_visibility="collapsed")
         st.divider()
+        footer = st.container()
+    return page, footer
+
+
+def _sidebar_footer(footer) -> None:
+    """Show progress and how the work is being kept. This is drawn last, to be up to date."""
+    with footer:
         st.caption("  \n".join(f"{'✓' if done else '○'} {label}" for done, label in _progress()))
         if ss.sheet is not None:
             total = len(ss.sheet)
             names = [name for name in table_to_response_names() if name in ss.sheet]
             complete = int(ss.sheet[names].notna().all(axis=1).sum()) if names else 0
             st.caption(f"**{_text(ss.study_name)}**: {complete} of {total} runs complete")
-        st.caption(
-            "Your work isn't saved here, and closing this page loses it. Download your run sheet and config "
-            "to keep them, and load them again to carry on."
-        )
-    return page
+        if autosave_folder() is None:
+            st.caption(
+                "Your work isn't saved on this server, and closing or refreshing this page loses it. "
+                "Download your study regularly, and load that file in step 1 to carry on."
+            )
+        elif ss.save_error:
+            st.warning(f"Couldn't save automatically: {ss.save_error}. Download your study to keep it safe.")
+        elif ss.saved_at:
+            st.caption(
+                f"✓ Saved automatically on this computer at {ss.saved_at.strftime('%H:%M:%S')}. "
+                "If you close this page, start the app again and choose this study in step 1."
+            )
+        else:
+            st.caption("Your work is saved automatically on this computer as you go.")
+        if has_work():
+            st.download_button(
+                "Download my study",
+                dump_document(current_document()),
+                f"{_text(ss.study_name) or 'study'}.doekit.yaml",
+                "text/yaml",
+                key="download_study",
+                on_click="ignore",
+                help="One file with your settings, design and results. Load it in step 1 to carry on, on any computer.",
+            )
 
 
 def main() -> None:
     st.set_page_config(page_title="doekit: design of experiments", page_icon="🧪", layout="wide")
     init_state()
-    page = sidebar()
+    if "pending_page" in ss:
+        ss.page = ss.pop("pending_page")
+    page, footer = sidebar()
     if page != ss.last_page:
         refresh_editors()
         ss.last_page = page
+    if "notice" in ss:
+        st.success(ss.pop("notice"))
     screens = {
         PAGE_DEFINE: page_define,
         PAGE_DESIGN: page_design,
@@ -1219,8 +1435,14 @@ def main() -> None:
     except StudyError as error:
         st.error(str(error))
     except Exception:  # keep the app usable and give people something to report
-        st.error("Something unexpected went wrong. The details below will help whoever looks after this tool.")
+        st.error(
+            "Something unexpected went wrong, but your study has been kept. "
+            "The details below will help whoever looks after this tool."
+        )
         st.code(traceback.format_exc())
+    finally:
+        autosave()  # whatever happened above, don't lose the work
+    _sidebar_footer(footer)
 
 
 main()

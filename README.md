@@ -16,7 +16,7 @@ conda activate doe
 streamlit run app/streamlit_app.py --server.address localhost
 ```
 
-The app opens in your browser and stays private to your computer. In step 1, load the worked example to see a complete study with simulated results.
+The app opens in your browser and stays private to your computer. Your work is saved automatically as you go, and you can carry on with a saved study from step 1. In step 1, load the worked example to see a complete study with simulated results.
 
 Or run the same example with scripts:
 
