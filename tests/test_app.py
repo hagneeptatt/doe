@@ -1,5 +1,6 @@
 """Click through the web app without a browser, using Streamlit's own test tool."""
 
+import re
 from pathlib import Path
 
 import numpy as np
@@ -225,6 +226,30 @@ def test_changing_factors_after_the_design_warns(app):
     app.session_state["factors_current"] = factors
     go(app, RESULTS)
     assert any("factors have changed" in w.value for w in app.warning)
+
+
+def test_every_link_within_the_manual_leads_somewhere():
+    text = (ROOT / "docs/manual.md").read_text(encoding="utf-8")
+    headings = re.findall(r"^#{1,6} (.+)$", text, flags=re.MULTILINE)
+    anchors = {re.sub(r"[^a-z0-9 -]", "", heading.lower()).replace(" ", "-") for heading in headings}
+    links = re.findall(r"\]\(#([^)]+)\)", text)
+    assert len(links) > 15
+    assert not [link for link in links if link not in anchors]
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for link in re.findall(r"docs/manual\.md#([^)]+)\)", readme):
+        assert link in anchors, link
+
+
+def test_every_method_table_source_is_in_the_references():
+    """Each short citation in the methods section has to have a full entry."""
+    text = (ROOT / "docs/manual.md").read_text(encoding="utf-8")
+    methods = text[text.index("## 11. Methods behind each step") : text.index("## 12. How doekit was checked")]
+    references = text[text.index("## 13. References") :]
+    citations = re.findall(r"([A-Z][\w'é]+)(?: & [A-Z][\w'é]+| et al\.)? \((\d{4})\)", methods)
+    assert len(citations) > 15
+    for author, year in citations:
+        assert re.search(rf"^- {author},.*\({year}\)", references, flags=re.MULTILINE), f"{author} ({year})"
 
 
 def test_manual_page_renders(app):

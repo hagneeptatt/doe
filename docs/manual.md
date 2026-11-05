@@ -18,8 +18,9 @@
 8. [Using the scripts and config files](#8-using-the-scripts-and-config-files)
 9. [Troubleshooting](#9-troubleshooting)
 10. [What doekit doesn't do](#10-what-doekit-doesnt-do)
-11. [How doekit was checked](#11-how-doekit-was-checked)
-12. [References](#12-references)
+11. [Methods behind each step](#11-methods-behind-each-step)
+12. [How doekit was checked](#12-how-doekit-was-checked)
+13. [References](#13-references)
 
 ---
 
@@ -77,11 +78,11 @@ Enter your factors and responses in the app (step 1 on screen), or copy a templa
 
 ### Step 3: Choose a design
 
-Use [section 3](#3-choosing-a-design). The app can suggest designs from your factors, objective and budget, and shows real run counts for each option.
+Use [section 3](#3-choosing-a-design). The app can suggest designs from your factors, objective and budget, and shows real run counts for each option. The methods are listed under [Creating the design](#creating-the-design).
 
 ### Step 4: Check the design before you start
 
-This costs nothing, and it's the last chance to change the plan. Look at the following:
+This costs nothing, and it's the last chance to change the plan. Look at the following (the calculations are under [Judging a design](#judging-a-design-before-running-it)):
 
 | Check | Good sign | If not |
 |---|---|---|
@@ -104,11 +105,11 @@ Type results directly into the app, or fill in the run sheet in Excel and upload
 
 ### Step 7: Analyse
 
-For each response, read the **verdict** first, then use [section 5](#5-reading-your-results) to work out what to do about anything flagged. Don't move on with a model the checks don't support.
+For each response, read the **verdict** first, then use [section 5](#5-reading-your-results) to work out what to do about anything flagged. Don't move on with a model the checks don't support. The methods and thresholds are under [Fitting the model](#fitting-the-model) and [Checking the model](#checking-the-model).
 
 ### Step 8: Find the best settings
 
-doekit searches for the settings that best meet all your goals at once, and predicts each response with a range. Look at the **sweet spot** plot as well as the single best point. A wide sweet spot means the process tolerates small errors, which often matters more than a slightly better peak.
+doekit searches for the settings that best meet all your goals at once, and predicts each response with a range. Look at the **sweet spot** plot as well as the single best point. A wide sweet spot means the process tolerates small errors, which often matters more than a slightly better peak. The methods are under [Finding the best settings](#finding-the-best-settings).
 
 ### Step 9: Confirm
 
@@ -127,7 +128,7 @@ Keep the following together, and store them with your lab notebook entry:
 - The completed run sheet, including notes.
 - The reports and figures, and the results of the confirmation runs.
 
-When you report a study, state the design type, number of runs and replicates, the final model, R², adjusted R² and predicted R², the lack-of-fit result, and the confirmation results.
+When you report a study, state the design type, number of runs and replicates, the final model, R², adjusted R² and predicted R², the lack-of-fit result, and the confirmation results. [Writing up your methods](#writing-up-your-methods) has wording you can adapt.
 
 ---
 
@@ -252,7 +253,7 @@ If you think a factor combination can't be made or printed, add a **constraint**
 
 ## 5. Reading your results
 
-Start with the verdict, which turns the statistics into plain statements. Here's what each check means, and what to do when it flags something.
+Start with the verdict, which turns the statistics into plain statements. Here's what each check means, and what to do when it flags something. The exact tests and thresholds are under [Checking the model](#checking-the-model).
 
 | Check | What it asks | If flagged |
 |---|---|---|
@@ -569,7 +570,103 @@ Knowing the limits matters as much as knowing the features. These situations nee
 
 ---
 
-## 11. How doekit was checked
+## 11. Methods behind each step
+
+You don't need this section to run a study. It shows what doekit actually does at each step, where each method comes from, and how to describe your methods in a paper. Short citations refer to [section 13](#13-references). Where the source is a textbook, it's a general reference for that topic, so check the relevant chapter before citing it. Settings shown are the defaults, and thresholds are the points at which the app raises a flag.
+
+### Creating the design
+
+| Design or step | Method | Done by | Source |
+|---|---|---|---|
+| Full factorial | Every combination of levels | pyDOE3 | Montgomery |
+| Fractional factorial | Regular two-level fractions, from the standard table of minimum-aberration generators. Resolution is calculated from the defining relation, and aliases are listed in the report | pyDOE3, with doekit's table | Box & Hunter (1961); Fries & Hunter (1980); Montgomery |
+| Plackett-Burman | Two-level orthogonal main-effects plans | pyDOE3 | Plackett & Burman (1946) |
+| Taguchi | Orthogonal arrays, with factors assigned to columns with the right number of levels. Analysed by regression, not signal-to-noise ratios | pyDOE3, then doekit | Taguchi (1987) |
+| Generalized subset | Balanced reduction of a multi-level factorial | pyDOE3 | Surowiec et al. (2017) |
+| Box-Behnken | Three-level design with no runs at the extreme corners. Above 5 factors it uses a pairwise construction, which needs more runs than the published tables | pyDOE3 | Box & Behnken (1960) |
+| Central composite | Two-level factorial core, plus star points and centre points. Face-centred by default | pyDOE3 | Box & Wilson (1951) |
+| Doehlert | Uniform shell: every difference between the corners of a regular simplex, scaled to your limits | doekit | Doehlert (1970) |
+| Latin hypercube | Stratified sampling, improved by minimising centred discrepancy | SciPy | McKay et al. (1979) |
+| Sobol | Scrambled low-discrepancy sequence | SciPy | Sobol' (1967) |
+| Simplex lattice | Every blend with proportions in steps of 1/degree | doekit | Scheffé (1958) |
+| Simplex centroid | Pure components and all equal-parts blends | doekit | Scheffé (1963) |
+| Extreme vertices | Corners of the allowed region, found by setting all components but one to their limits, plus edge midpoints and the centre | doekit | McLean & Anderson (1966) |
+| D-optimal, I-optimal | Fedorov exchange: repeatedly make the best single swap between a design run and a candidate run, from several starting designs (20, or fewer for large problems). D-optimal maximises det(X'X). I-optimal then minimises the average prediction variance across the candidates | doekit | Fedorov (1972); Goos & Jones (2011) |
+| Candidate runs for optimal designs | Process factors on a grid of 3 levels (5 with constraints or cubic terms). Blends from corners, edge midpoints, the centre and a lattice. Up to 5,000 runs, sampled at random above that | doekit | Goos & Jones (2011) |
+| Run count for optimal designs | Model terms + 4 runs to test lack of fit + 4 replicates | doekit | |
+| Replicate runs | Repeats of the distinct runs with the highest leverage | doekit | |
+| Blocks | Equal-sized blocks, improved by swapping pairs of runs to maximise det(X'X) with block effects included | doekit | Goos & Jones (2011) |
+| Run order | Random permutation, within blocks if there are any | NumPy | Montgomery |
+
+### Judging a design before running it
+
+These depend only on where the runs are placed, so they're given as multiples of the noise, which isn't known yet.
+
+| Measure | How it's calculated | Source |
+|---|---|---|
+| Standard error of a term | Square root of the term's diagonal entry in (X'X)⁻¹ | Montgomery |
+| Prediction error | Square root of x'(X'X)⁻¹x, across the candidate runs. The comparison plot sorts these values | Zahran et al. (2003) |
+| Power | Two-sided t-test at α = 0.05, using the noncentral t distribution. A low-to-high change of S × noise means a coefficient of S/2 in coded units. Not given for mixture terms | Montgomery |
+| Entangled terms (VIF) | Diagonal entry of (X'X)⁻¹ × the term's corrected sum of squares. Flagged above 10, except for blend terms | Montgomery |
+| D-efficiency | 100 × det(X'X)^(1/p) / n, for p terms and n runs. In the design report | Goos & Jones (2011) |
+| Effects that can't be separated | Model columns that are identical up to scale | |
+
+### Fitting the model
+
+| Step | Method | Done by | Source |
+|---|---|---|---|
+| Fitting | Ordinary least squares | statsmodels | Montgomery |
+| Process factors | Coded from −1 (low) to +1 (high) | doekit | Myers et al. |
+| Default model orders | Linear, interaction, quadratic or cubic polynomials. The default depends on the design | doekit | Myers et al. |
+| Categorical factors and blocks | Effect coding, so each coefficient is a difference from the overall mean. Blocks are fixed effects, and predictions average over them | doekit | Montgomery |
+| Blends | Scheffé canonical polynomials with no intercept, on L-pseudo-components | doekit | Scheffé (1958); Cornell |
+| Blends with process factors | Blend model + (component × process) terms + process-only higher-order terms | doekit | Cornell |
+| Transforms | Fitted on the log or square-root scale. Predictions and intervals are converted back, so on the log scale they estimate the median | doekit | Box & Cox (1964) |
+| Model reduction (optional) | Backward elimination: remove the least significant term until all have p ≤ 0.10, keeping the model hierarchical. Component terms always stay | doekit | Montgomery |
+| Effect plots for blends | Cox direction: change one component while the others keep their proportions | doekit | Cornell |
+
+### Checking the model
+
+| Check | Method | Flagged when | Source |
+|---|---|---|---|
+| Overall model | F-test of all model terms, excluding blocks | p ≥ 0.05 | Montgomery |
+| Each term | Partial F-test comparing the model with and without the term (Type III). Component terms are tested together as "Linear mixture" | Not flagged, but shown in the table and plot | Montgomery; Cornell |
+| R² and adjusted R² | Calculated from the corrected total, including for models with no intercept | Not flagged | Montgomery |
+| Predictive power | Predicted R², from the PRESS statistic (leave-one-out residuals) | Below 0, or more than 0.2 below adjusted R² | Allen (1974) |
+| Lack of fit | F-test against pure error. Pure error comes from fitting a separate mean to each distinct setting, plus any block effects | p < 0.05 | Montgomery |
+| Residual normality | Shapiro-Wilk test, with at least 8 runs and 3 spare | p < 0.01 | Shapiro & Wilk (1965) |
+| Constant variance | Spearman correlation between predicted values and absolute residuals, with at least 8 runs | Positive, with p < 0.05 | |
+| Transform | Box-Cox profile likelihood, for λ from −2 to 2 in steps of 0.1, with a 95% interval. Suggests none if the interval includes 1, then log if it includes 0, then square root if it includes 0.5 | Interval excludes 1 | Box & Cox (1964) |
+| Run order | Durbin-Watson statistic, in run order | Below 1 or above 3 | Durbin & Watson (1950) |
+| Outliers | Externally studentised residuals | Size above 3.5 | Montgomery |
+| Influential runs | Cook's distance | Above 1 | Cook (1977) |
+| Curvature, in two-level designs | t-test comparing centre points with corners, using the scatter of the centre points | p < 0.05 | Montgomery |
+| No spare runs | Lenth's pseudo standard error and margin of error at α = 0.05, with a half-normal plot | Effects above the margin stand out | Lenth (1989) |
+| Prediction ranges | t-based 95% prediction interval for a single new run | Not flagged | Montgomery |
+
+### Finding the best settings
+
+| Step | Method | Done by | Source |
+|---|---|---|---|
+| Scoring one response | Desirability function from 0 to 1, with `shape` as the exponent. Limits you don't set come from the lowest and highest values measured | doekit | Derringer & Suich (1980) |
+| Combining responses | Weighted geometric mean, with `importance` as the weight | doekit | Derringer & Suich (1980) |
+| Searching | Differential evolution, from 3 starting points for each combination of categorical and discrete levels (1 if there are more than 4 combinations) | SciPy | Storn & Price (1997) |
+| Refining | Nelder-Mead simplex, from the best point found | SciPy | Nelder & Mead (1965) |
+| Keeping blends on their total | The last component is whatever remains. Going past a limit or constraint incurs a penalty | doekit | |
+| Choosing between equal settings | A very small preference for settings where the model has the lowest leverage | doekit | |
+| Spotting extrapolation | Flagged when a setting's leverage is higher than that of any run in the study | doekit | Montgomery |
+
+### Writing up your methods
+
+You can adapt this wording, keeping only what applies to your study. Get your software versions by running `pip list` in the `doe` environment.
+
+> A [design type] with [n] runs, including [r] replicates, was generated with doekit [version] (https://github.com/hagneeptatt/doe) using pyDOE3 [version]. Runs were performed in random order[, in [b] blocks]. Each response was fitted by ordinary least squares in statsmodels [version] using a [model] model, with factors in coded units[, and with mixture components as Scheffé polynomials on pseudo-components][, after a [log] transformation][, and reduced by hierarchical backward elimination at p = 0.10]. Models were assessed by analysis of variance, lack-of-fit testing, adjusted and predicted R², and residual analysis. Responses were combined using desirability functions (Derringer & Suich, 1980), and the best settings were found by differential evolution (Storn & Price, 1997) in SciPy [version]. Predictions were tested with [c] independent confirmation runs.
+
+Also report the results listed in [step 10](#step-10-keep-your-records), and cite the original paper for your design type.
+
+---
+
+## 12. How doekit was checked
 
 The automatic tests in `tests/` run with `pytest`. They include:
 
@@ -583,22 +680,43 @@ These tests show that the calculations are right. They can't show that a particu
 
 ---
 
-## 12. References
+## 13. References
 
 **Books**
 
+- Cornell, J.A. *Experiments with Mixtures.* Wiley.
+- Fedorov, V.V. (1972). *Theory of Optimal Experiments.* Academic Press.
+- Goos, P., Jones, B. (2011). *Optimal Design of Experiments: A Case Study Approach.* Wiley. A readable guide to D-optimal and I-optimal designs.
 - Montgomery, D.C. *Design and Analysis of Experiments.* Wiley. The standard introduction.
 - Myers, R.H., Montgomery, D.C., Anderson-Cook, C.M. *Response Surface Methodology.* Wiley.
-- Cornell, J.A. *Experiments with Mixtures.* Wiley.
-- Goos, P., Jones, B. *Optimal Design of Experiments: A Case Study Approach.* Wiley, 2011. A readable guide to D-optimal and I-optimal designs.
+- Taguchi, G. (1987). *System of Experimental Design.* UNIPUB/Kraus International.
 
-**Original papers**
+**Papers**
 
+- Allen, D.M. (1974). The relationship between variable selection and data augmentation and a method for prediction. *Technometrics* 16(1), 125–127.
 - Box, G.E.P., Behnken, D.W. (1960). Some new three level designs for the study of quantitative variables. *Technometrics* 2(4), 455–475.
-- Box, G.E.P., Wilson, K.B. (1951). On the experimental attainment of optimum conditions. *Journal of the Royal Statistical Society B* 13(1), 1–45.
+- Box, G.E.P., Cox, D.R. (1964). An analysis of transformations. *Journal of the Royal Statistical Society B* 26(2), 211–243.
+- Box, G.E.P., Hunter, J.S. (1961). The 2^(k−p) fractional factorial designs, part I. *Technometrics* 3(3), 311–351.
+- Box, G.E.P., Wilson, K.B. (1951). On the experimental attainment of optimum conditions. *Journal of the Royal Statistical Society B* 13(1), 1–38.
+- Cook, R.D. (1977). Detection of influential observation in linear regression. *Technometrics* 19(1), 15–18.
 - Derringer, G., Suich, R. (1980). Simultaneous optimization of several response variables. *Journal of Quality Technology* 12(4), 214–219.
+- Doehlert, D.H. (1970). Uniform shell designs. *Applied Statistics* 19(3), 231–239.
+- Durbin, J., Watson, G.S. (1950). Testing for serial correlation in least squares regression: I. *Biometrika* 37(3/4), 409–428.
+- Fries, A., Hunter, W.G. (1980). Minimum aberration 2^(k−p) designs. *Technometrics* 22(4), 601–608.
 - Lenth, R.V. (1989). Quick and easy analysis of unreplicated factorials. *Technometrics* 31(4), 469–473.
+- McKay, M.D., Beckman, R.J., Conover, W.J. (1979). A comparison of three methods for selecting values of input variables in the analysis of output from a computer code. *Technometrics* 21(2), 239–245.
+- McLean, R.A., Anderson, V.L. (1966). Extreme vertices design of mixture experiments. *Technometrics* 8(3), 447–454.
+- Nelder, J.A., Mead, R. (1965). A simplex method for function minimization. *The Computer Journal* 7(4), 308–313.
 - Plackett, R.L., Burman, J.P. (1946). The design of optimum multifactorial experiments. *Biometrika* 33(4), 305–325.
 - Scheffé, H. (1958). Experiments with mixtures. *Journal of the Royal Statistical Society B* 20(2), 344–360.
+- Scheffé, H. (1963). The simplex-centroid design for experiments with mixtures. *Journal of the Royal Statistical Society B* 25(2), 235–251.
+- Shapiro, S.S., Wilk, M.B. (1965). An analysis of variance test for normality (complete samples). *Biometrika* 52(3/4), 591–611.
+- Sobol', I.M. (1967). On the distribution of points in a cube and the approximate evaluation of integrals. *USSR Computational Mathematics and Mathematical Physics* 7(4), 86–112.
+- Storn, R., Price, K. (1997). Differential evolution: a simple and efficient heuristic for global optimization over continuous spaces. *Journal of Global Optimization* 11(4), 341–359.
+- Surowiec, I., et al. (2017). Generalized subset designs in analytical chemistry. *Analytical Chemistry* 89(12), 6491–6497.
+- Zahran, A., Anderson-Cook, C.M., Myers, R.H. (2003). Fraction of design space to assess prediction capability of response surface designs. *Journal of Quality Technology* 35(4), 377–386.
 
-**Software.** doekit uses [pyDOE3](https://github.com/relf/pyDOE3) for classical designs, [statsmodels](https://www.statsmodels.org) for regression, [SciPy](https://scipy.org) for search and sampling, [mpltern](https://github.com/yuzie007/mpltern) for blend plots, and [Streamlit](https://streamlit.io) for the web app.
+**Software.** doekit uses [pyDOE3](https://github.com/relf/pyDOE3) for classical designs, [statsmodels](https://www.statsmodels.org) for regression, [SciPy](https://scipy.org) for search and sampling, [mpltern](https://github.com/yuzie007/mpltern) for blend plots, and [Streamlit](https://streamlit.io) for the web app. To cite the main ones:
+
+- Seabold, S., Perktold, J. (2010). statsmodels: econometric and statistical modeling with Python. *Proceedings of the 9th Python in Science Conference.*
+- Virtanen, P., et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. *Nature Methods* 17, 261–272.

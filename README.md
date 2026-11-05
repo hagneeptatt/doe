@@ -4,7 +4,7 @@ Design, analyse and optimise experiments for any process, using a web app or fro
 
 doekit takes you through a whole design of experiments (DOE) study. It helps you choose a design, gives you a randomised run sheet, fits and checks a model for each response, and finds the settings that best meet your goals. It explains its results in plain language, so you don't need a statistics background to use it.
 
-**New to DOE, or choosing a design? Start with the [manual](docs/manual.md).**
+**New to DOE, or choosing a design? Start with the [manual](docs/manual.md).** It also lists [the methods behind each step](docs/manual.md#11-methods-behind-each-step), with their sources.
 
 ## Quick start
 
@@ -85,7 +85,7 @@ archive/            The original analysis script
 pytest
 ```
 
-The tests compare results with published examples, check the design algorithms against brute force, run every template from start to finish, and click through the app. See [how doekit was checked](docs/manual.md#11-how-doekit-was-checked).
+The tests compare results with published examples, check the design algorithms against brute force, run every template from start to finish, and click through the app. See [how doekit was checked](docs/manual.md#12-how-doekit-was-checked).
 
 ## Sharing it
 

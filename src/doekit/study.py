@@ -204,7 +204,7 @@ class Constraint:
 
 
 def mixture_vertices(lower, upper, total: float) -> np.ndarray:
-    """Find the corners of a constrained mixture region (the XVERT algorithm).
+    """Find the corners of a constrained mixture region (McLean & Anderson, 1966).
 
     Every corner has all but one component sitting on a bound, so try each
     combination of bounds and keep those where the remaining component fits.
