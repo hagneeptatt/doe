@@ -357,14 +357,21 @@ The app then runs entirely on your computer, so your data stays there and you do
 **Set it up once:**
 
 1. Install [Miniconda](https://docs.conda.io/projects/miniconda/), if you don't already have conda.
-2. Get a copy of the project folder. On the [project's GitHub page](https://github.com/hagneeptatt/doe), choose **Code**, then **Download ZIP**, and unzip it. If you use Git, you can run `git clone https://github.com/hagneeptatt/doe.git` instead.
-3. Open a terminal in that folder (on Windows, use Anaconda Prompt) and run:
+2. Install Git, if you don't already have it. You don't need a Git or GitHub account. To check, open a terminal (on Windows, use Anaconda Prompt) and run `git --version`. If it isn't installed:
+   - **On a Mac:** that command offers to install Apple's Command Line Tools, which include Git. Accept, and wait for it to finish.
+   - **On Windows:** download the installer from [git-scm.com](https://git-scm.com/downloads) and keep its default options. Then open a new Anaconda Prompt.
+   - **If you can't install software on your computer:** run `conda install --override-channels -c conda-forge git`.
+3. In the terminal, go to the folder where you want to keep the project, such as Documents. Then run:
 
 ```bash
+git clone https://github.com/hagneeptatt/doe.git
+cd doe
 conda env create -f environment.yml
 ```
 
-**Then start it each time you use it,** from the same folder:
+The last command can take a few minutes. If it says the `doe` environment already exists, run `conda activate doe` and then `pip install -e .` instead.
+
+**Then start it each time you use it,** from the `doe` folder:
 
 ```bash
 conda activate doe
@@ -373,18 +380,20 @@ streamlit run app/streamlit_app.py --server.address localhost
 
 The app opens in your browser. If it doesn't, go to <http://localhost:8501>. `--server.address localhost` keeps it private to your computer. Without it, other people on your network may be able to open the app. To stop it, press Ctrl+C in the terminal.
 
-**To update to a new version:**
-
-1. Stop the app, then download and unzip the new version as in step 2 above. Keep your old folder for now.
-2. If you have saved studies, copy `data/app_studies` from your old folder into the `data` folder of the new one.
-3. Open a terminal in the new folder and run the commands below. This matters because the `doe` environment keeps using the code in your old folder until you do.
+**To update to a new version,** stop the app, then run these from the `doe` folder and start it again. Your saved studies and your own config files stay as they are.
 
 ```bash
+git pull
 conda activate doe
 pip install -e .
 ```
 
-From now on, start the app from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
+**If you can't use Git,** you can use a ZIP instead, but updating takes more steps:
+
+1. To set up, go to the [project's GitHub page](https://github.com/hagneeptatt/doe), choose **Code**, then **Download ZIP**, and unzip it. Then open a terminal in that folder and run `conda env create -f environment.yml`.
+2. To update, download and unzip the new version, and keep your old folder for now. Copy `data/app_studies` from your old folder into the `data` folder of the new one.
+3. Open a terminal in the new folder and run `conda activate doe`, then `pip install -e .`. This matters because the `doe` environment keeps using the code in your old folder until you do.
+4. From now on, start the app from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
 
 ### The steps
 
@@ -541,6 +550,8 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 
 | What you see | What it means | What to do |
 |---|---|---|
+| "Your local changes... would be overwritten by merge" | `git pull` stopped because you've edited a file it needs to update. Nothing has changed | Copy your version of that file somewhere else if you want to keep it. Then run `git restore` followed by the file's path, and run `git pull` again |
+| "No module named 'doekit.saved_study'" | The `doe` environment is still using the code in an old folder | Run `conda activate doe`, then `pip install -e .`, from the folder you start the app from |
 | "For better performance, install the Watchdog module" | The app only reloads more slowly when its code files change. Your results aren't affected | You can ignore it, or run `pip install watchdog` and restart the app |
 | "This model can't be estimated" | The design doesn't have enough distinct runs to separate these terms | Use a simpler model, or a design with more runs |
 | "These can't be told apart" | Two effects are confounded in this design | Use a higher-resolution design, or choose which term to keep |
