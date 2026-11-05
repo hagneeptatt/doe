@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+docs = ["markdown-it-py>=3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

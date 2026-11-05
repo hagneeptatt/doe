@@ -540,7 +540,7 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 | `data/<study>/` | Run sheets, which hold your results. Git ignores this folder to keep them off GitHub, **so back them up yourself** |
 | `data/app_studies/` | Studies saved automatically by the app. Git ignores this folder, **so back it up yourself** |
 | `results/<study>/` | Reports and figures, which can be regenerated at any time |
-| `docs/` | This manual, and the hosting guide |
+| `docs/` | This manual (as Markdown and a PDF), and the hosting guide |
 | `tests/` | Automatic checks of the toolkit |
 | `archive/` | The original analysis script |
 
@@ -729,6 +729,6 @@ These tests show that the calculations are right. They can't show that a particu
 
 **Software.** doekit uses [pyDOE3](https://github.com/relf/pyDOE3) for classical designs, [statsmodels](https://www.statsmodels.org) for regression, [SciPy](https://scipy.org) for search and sampling, [mpltern](https://github.com/yuzie007/mpltern) for blend plots, and [Streamlit](https://streamlit.io) for the web app. To cite the main ones:
 
-- Shields, F. doekit: design, analyse and optimise experiments. Zenodo. https://doi.org/10.5281/zenodo.23982051
+- Shields, F. doekit: design, analyse and optimise experiments. Zenodo. <https://doi.org/10.5281/zenodo.23982051>
 - Seabold, S., Perktold, J. (2010). statsmodels: econometric and statistical modeling with Python. *Proceedings of the 9th Python in Science Conference.*
 - Virtanen, P., et al. (2020). SciPy 1.0: fundamental algorithms for scientific computing in Python. *Nature Methods* 17, 261–272.

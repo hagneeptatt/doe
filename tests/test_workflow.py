@@ -147,7 +147,8 @@ def test_compare_designs_skips_ones_that_cannot_estimate_the_model(project):
 
 # ------------------------------------------------------------------ the scripts themselves
 @pytest.mark.parametrize(
-    "script", ["1_create_design", "2_analyse_results", "3_optimise", "recommend_design", "compare_designs", "simulate_results"]
+    "script",
+    ["1_create_design", "2_analyse_results", "3_optimise", "recommend_design", "compare_designs", "simulate_results", "build_manual_pdf"],
 )
 def test_scripts_show_help(script):
     result = subprocess.run([sys.executable, str(ROOT / "scripts" / f"{script}.py"), "--help"], capture_output=True, text=True)
