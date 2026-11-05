@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use doekit in your research, please cite it using these details."
+title: "doekit: design, analyse and optimise experiments"
+type: software
+authors:
+  - family-names: Shields
+    given-names: Fraser
+    orcid: "https://orcid.org/0000-0003-3325-4181"
+repository-code: "https://github.com/hagneeptatt/doe"
+abstract: >-
+  A toolkit for planning, analysing and optimising designed experiments for any
+  process, using a web app or config files. It covers screening, response surface,
+  mixture, optimal and space-filling designs, with model checking and
+  multi-response optimisation.
+keywords:
+  - design of experiments
+  - response surface methodology
+  - mixture experiments
+  - optimal design
+  - bioprinting
+license: MIT
+version: 0.1.0

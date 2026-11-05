@@ -5,8 +5,6 @@ import argparse
 from doekit.designs import DESIGNS
 from doekit.workflow import create_design_step, run_script
 
-# hello
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
