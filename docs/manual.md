@@ -118,7 +118,7 @@ doekit searches for the settings that best meet all your goals at once, and pred
 1. Prepare the best settings and do **at least 3 independent confirmation runs**.
 2. Compare the results with the prediction range doekit gave for a new run.
    - **Inside the range:** the model is confirmed. Use these settings.
-   - **Outside the range:** something is missing from the model. Don't use the prediction. Run a smaller follow-up experiment around this region.
+   - **Outside the range:** something is missing from the model. Don't use the prediction. Run a smaller follow-up experiment around this region. You can [add those runs to this study](#adding-more-runs-later) rather than starting again.
 
 ### Step 10: Keep your records
 
@@ -239,6 +239,28 @@ For blends of 3, 4 and 5 components, a simplex lattice of degree 2 needs 6, 10 a
 | You're optimising two jetting settings, such as pressure and valve open time. | **Central composite** (face-centred), or a 3 × 3 full factorial |
 | You're optimising five melt electrowriting settings where all-extreme runs are risky. | **Box-Behnken**, 40 runs plus 6 centre points |
 | You're collecting data for a machine learning model of a complex process. | **Latin hypercube**, at least 10 runs per factor |
+
+### Adding more runs later
+
+You don't have to get everything right in one experiment. Working in stages is often the most efficient way to run a study: learn something, then decide what to do next. doekit can add runs to a design you've already started, and your existing runs and results don't change.
+
+Your existing runs stay fixed, and the optimal design search picks the new runs that add the most to them, for the model you want to fit. Common reasons to add runs:
+
+| Situation | What to set |
+|---|---|
+| Screening found the important factors, and now you want to find the best settings. | Choose the model with curves and interactions, and the search adds the runs that make it possible. All your factors stay in the study. To drop the ones that didn't matter, set up a new study instead (see below) |
+| The model doesn't fit well, or the effects are less certain than you need. | Keep the same model, add runs, and aim for better estimates or better predictions |
+| The best settings are near the edge of a range you tested, and you want to go further. | Widen that factor's limits in step 1, then add runs. The new runs can then go up to the new limits |
+| You want more detail around promising settings. | Keep the new runs inside part of the range. Your earlier runs still count towards the model |
+| You didn't include repeats, so you don't know your noise. | Set some of the new runs to repeat earlier ones |
+
+**Doing the new runs in a separate session.** Later experiments often differ a little from earlier ones, such as a new batch of material, another day or another operator. If that applies, leave the session option on. The new runs then go in their own **block**, so a difference between sessions isn't mistaken for a factor effect. Repeating 2 or more earlier runs in the new session also shows how well the two sessions match.
+
+**Failed runs.** A run with no result hasn't told you anything, so it isn't counted when choosing the new runs. It stays in your run sheet, along with your notes.
+
+**When to set up a new study instead.** Start again if you've removed factors, moved to a very different region, or changed something the factors don't capture, such as a new supplier or a different printer. Runs from the old conditions may not apply to the new ones, and combining them could mislead you.
+
+To add runs, see [section 7](#the-steps) for the app or [section 8](#running-a-study) for the scripts.
 
 ---
 
@@ -424,9 +446,11 @@ The steps are listed in the sidebar:
 | **5. Find best settings** | Get the best settings with predicted ranges, try your own settings, and download everything |
 | **Manual** | This document |
 
+**Adding more runs.** Open **Add more runs to this experiment** in step 2. Choose how many runs you want, whether they'll be done in a separate session, and any repeats. You can also choose a fuller model and keep the new runs inside part of the range. **Suggest new runs** then shows the runs and what they'd add, and nothing changes until you select **Add these runs to my run sheet**. They're added to the end of the sheet, so download it again, then enter their results in step 3. See [Adding more runs later](#adding-more-runs-later) for when and why to do this.
+
 **Saving your work on your own computer.** The app saves your study automatically as you go, including half-filled tables, design settings, results and best settings. If you refresh or close the page, or the app stops, start it again and choose the study under **Carry on with a saved study** in step 1.
 
-Studies are kept in `data/app_studies/`, with one folder for each study. Git ignores this folder, so back it up yourself. If a new design, an upload or simulated results replace existing results, the previous version is kept in that study's `history` folder. To go back to one, load it with **Load saved study** in step 1.
+Studies are kept in `data/app_studies/`, with one folder for each study. Git ignores this folder, so back it up yourself. If a new design, an upload, simulated results or added runs change a sheet that has results, the previous version is kept in that study's `history` folder. To go back to one, load it with **Load saved study** in step 1.
 
 **Saving your work on a hosted copy.** Nothing is saved on the server, and refreshing or closing the page loses your work, so use **Download my study** in the sidebar regularly. That one file holds everything, and you can load it in step 1 on any computer.
 
@@ -473,6 +497,21 @@ python scripts/3_optimise.py        configs/examples/hydrogel_bioink_simulated.y
 ```
 
 Your results are protected: `1_create_design.py` won't replace a run sheet that already exists unless you add `--force`.
+
+To add runs to a study you've already started:
+
+```bash
+# Add 8 runs in a new block, 2 of them repeating earlier runs
+python scripts/add_runs.py configs/my_study.yaml --runs 8 --repeats 2
+
+# Keep the new runs inside part of a factor's range, and aim for better estimates of each effect
+python scripts/add_runs.py configs/my_study.yaml --runs 6 --region pressure=60:90 --goal effects
+
+# The new runs will be done alongside the earlier ones, so don't add a block
+python scripts/add_runs.py configs/my_study.yaml --runs 4 --same-session
+```
+
+The new runs go at the end of the run sheet, and your existing runs and results don't change. A copy of the previous run sheet is kept next to it. The runs are chosen for the model in your config file, so to go from screening to optimising, change `model` in the config to `quadratic` first. See [Adding more runs later](#adding-more-runs-later) for when and why to do this.
 
 ### Config file reference
 
@@ -591,7 +630,6 @@ Knowing the limits matters as much as knowing the features. These situations nee
 - **Pass or fail responses, and counts.** The models assume a continuous response. "Printed or didn't" needs logistic regression instead. A viability percentage is usually fine when it stays away from 0 and 100%.
 - **Non-independent measurements.** Several filaments from one print, or several wells from one batch, aren't independent runs. Average them into one result per run, and record the scatter separately.
 - **Noise factors and robust design.** Taguchi's signal-to-noise analysis isn't included.
-- **Adding to an existing design.** You can't yet extend a finished design by adding runs to it. Instead, set up a new study focused on the promising region.
 - **Definitive screening designs and Bayesian optimisation.** These are useful approaches, but they aren't included.
 - **Factors outside your ranges.** Predictions only hold within the region you tested, and doekit warns when a prediction is an extrapolation.
 
@@ -624,6 +662,7 @@ You don't need this section to run a study. It shows what doekit actually does a
 | Replicate runs | Repeats of the distinct runs with the highest leverage | doekit | |
 | Blocks | Equal-sized blocks, improved by swapping pairs of runs to maximise det(X'X) with block effects included | doekit | Goos & Jones (2011) |
 | Run order | Random permutation, within blocks if there are any | NumPy | Montgomery |
+| Adding runs to a design | The same Fedorov exchange, with the existing runs' model terms held fixed in X'X, so only the new runs can be swapped. Runs with no result aren't counted. Block effects are included, and I-optimal averages over blocks. Repeats are chosen first, from the earlier runs with the highest leverage | doekit | Fedorov (1972); Goos & Jones (2011) |
 
 ### Judging a design before running it
 
@@ -697,9 +736,16 @@ Also report the results listed in [step 10](#step-10-keep-your-records), and cit
 
 The automatic tests in `tests/` run with `pytest`. They include:
 
-- **Published results.** Coefficients and conclusions match textbook examples: the central composite chemical yield and the 2⁴ filtration rate example from Montgomery, and the yarn elongation mixture from Cornell.
+- **Published results.** Coefficients, standard errors, ANOVA tables and lack-of-fit tests match published analyses of these examples:
+  - from Montgomery: the central composite chemical yield, the 2⁴ filtration rate and its 2⁴⁻¹ half fraction, and the battery life experiment, with its categorical factors and with temperature as a curved numeric factor
+  - from Myers, Montgomery and Anderson-Cook: a chemical reaction run in two blocks, analysed both before and after the second block was added
+  - from Cornell: the yarn elongation mixture
+
+  Best settings match a published stationary point and a published two-response desirability optimum.
+- **Certified accuracy.** On NIST's Statistical Reference Datasets for regression, the results agree with NIST's certified values to at least 7 significant digits, and usually 13 to 15. This includes the Longley and Filip datasets, which are notoriously difficult.
 - **The original analysis.** The melt electrowriting model matches the original analysis script to within rounding error. This check only runs where the original data is available, because that data isn't in the public repository.
-- **The design algorithms.** The optimal design search finds the same answer as testing every possibility on small problems, and reproduces a known theoretical result for mixtures. Every tabulated fractional factorial's resolution is recalculated.
+- **The design algorithms.** The optimal design search finds the same answer as testing every possibility on small problems, and reproduces a known theoretical result for mixtures. Every tabulated fractional factorial's resolution is recalculated, and Box-Behnken and rotatable central composite designs match their published tables.
+- **Adding runs.** With existing runs held fixed, the search still finds the same answer as testing every possibility on small problems. Existing runs and results stay unchanged, a shift between sessions doesn't change the estimated effects, and a two-level design with added runs recovers a known curved formula exactly. Given the first block of the published two-block reaction experiment, it adds exactly the axial points of the textbook face-centred central composite design.
 - **Known truths.** On simulated data, the analysis recovers the formulas behind it, and 95% prediction intervals contain about 95% of new runs.
 - **The whole workflow.** Every template and example runs from design through to best settings, and the web app is clicked through automatically.
 
@@ -723,6 +769,7 @@ These tests show that the calculations are right. They can't show that a particu
 - Allen, D.M. (1974). The relationship between variable selection and data augmentation and a method for prediction. *Technometrics* 16(1), 125–127.
 - Box, G.E.P., Behnken, D.W. (1960). Some new three level designs for the study of quantitative variables. *Technometrics* 2(4), 455–475.
 - Box, G.E.P., Cox, D.R. (1964). An analysis of transformations. *Journal of the Royal Statistical Society B* 26(2), 211–243.
+- Box, G.E.P., Hunter, J.S. (1957). Multi-factor experimental designs for exploring response surfaces. *Annals of Mathematical Statistics* 28(1), 195–241.
 - Box, G.E.P., Hunter, J.S. (1961). The 2^(k−p) fractional factorial designs, part I. *Technometrics* 3(3), 311–351.
 - Box, G.E.P., Wilson, K.B. (1951). On the experimental attainment of optimum conditions. *Journal of the Royal Statistical Society B* 13(1), 1–38.
 - Cook, R.D. (1977). Detection of influential observation in linear regression. *Technometrics* 19(1), 15–18.
@@ -731,6 +778,7 @@ These tests show that the calculations are right. They can't show that a particu
 - Durbin, J., Watson, G.S. (1950). Testing for serial correlation in least squares regression: I. *Biometrika* 37(3/4), 409–428.
 - Fries, A., Hunter, W.G. (1980). Minimum aberration 2^(k−p) designs. *Technometrics* 22(4), 601–608.
 - Lenth, R.V. (1989). Quick and easy analysis of unreplicated factorials. *Technometrics* 31(4), 469–473.
+- Lenth, R.V. (2009). Response-surface methods in R, using rsm. *Journal of Statistical Software* 32(7), 1–17.
 - McKay, M.D., Beckman, R.J., Conover, W.J. (1979). A comparison of three methods for selecting values of input variables in the analysis of output from a computer code. *Technometrics* 21(2), 239–245.
 - McLean, R.A., Anderson, V.L. (1966). Extreme vertices design of mixture experiments. *Technometrics* 8(3), 447–454.
 - Nelder, J.A., Mead, R. (1965). A simplex method for function minimization. *The Computer Journal* 7(4), 308–313.
@@ -742,6 +790,11 @@ These tests show that the calculations are right. They can't show that a particu
 - Storn, R., Price, K. (1997). Differential evolution: a simple and efficient heuristic for global optimization over continuous spaces. *Journal of Global Optimization* 11(4), 341–359.
 - Surowiec, I., et al. (2017). Generalized subset designs in analytical chemistry. *Analytical Chemistry* 89(12), 6491–6497.
 - Zahran, A., Anderson-Cook, C.M., Myers, R.H. (2003). Fraction of design space to assess prediction capability of response surface designs. *Journal of Quality Technology* 35(4), 377–386.
+
+**Reference data used to check doekit**
+
+- Kuhn, M. desirability: function optimization and ranking via desirability functions. R package, with a vignette that works through Myers and Montgomery's two-response example. <https://cran.r-project.org/package=desirability>
+- National Institute of Standards and Technology. Statistical Reference Datasets: linear least squares regression. <https://www.itl.nist.gov/div898/strd/>
 
 **Software.** doekit uses [pyDOE3](https://github.com/relf/pyDOE3) for classical designs, [statsmodels](https://www.statsmodels.org) for regression, [SciPy](https://scipy.org) for search and sampling, [mpltern](https://github.com/yuzie007/mpltern) for blend plots, and [Streamlit](https://streamlit.io) for the web app. To cite the main ones:
 

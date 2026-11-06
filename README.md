@@ -55,6 +55,8 @@ python scripts/1_create_design.py  configs/my_study.yaml
 
 Run sheets go to `data/my_study/`, and they hold your results. Git ignores that folder to keep them off GitHub, so back them up yourself. `1_create_design.py` won't overwrite one that already exists.
 
+To add runs to a study you've already started, use **Add more runs** in the app, or `scripts/add_runs.py`. Your existing runs and results don't change.
+
 ## Project layout
 
 ```

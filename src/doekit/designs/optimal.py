@@ -73,12 +73,19 @@ def candidate_points(study: Study, options: dict, rng) -> pd.DataFrame:
     return candidates[study.factor_names]
 
 
-def _start(C: np.ndarray, runs: int, rng) -> np.ndarray:
+def _information(X: np.ndarray, fixed: np.ndarray | None) -> np.ndarray:
+    """Add up the information from the chosen runs and any runs that are already fixed."""
+    information = X.T @ X + _RIDGE * np.eye(X.shape[1])
+    return information if fixed is None else information + fixed.T @ fixed
+
+
+def _start(C: np.ndarray, runs: int, rng, fixed: np.ndarray | None = None) -> np.ndarray:
     """Build a starting design: some random runs, then the most informative ones."""
     size = C.shape[1]
-    first = min(max(1, size // 2), runs)
-    chosen = list(rng.choice(len(C), size=first, replace=False))
-    inverse = np.linalg.inv(C[chosen].T @ C[chosen] + _RIDGE * np.eye(size))
+    missing = size if fixed is None else size - int(np.linalg.matrix_rank(fixed))
+    first = min(max(1, missing // 2), runs)
+    chosen = list(rng.choice(len(C), size=first, replace=len(C) < first))
+    inverse = np.linalg.inv(_information(C[chosen], fixed))
     while len(chosen) < runs:
         variance = np.sum((C @ inverse) * C, axis=1)
         best = int(np.argmax(variance + rng.random(len(C)) * 1e-9))
@@ -88,14 +95,14 @@ def _start(C: np.ndarray, runs: int, rng) -> np.ndarray:
     return np.array(chosen)
 
 
-def _swap_gains(C: np.ndarray, chosen: np.ndarray, criterion: str, moments: np.ndarray | None):
+def _swap_gains(C: np.ndarray, chosen: np.ndarray, criterion: str, moments: np.ndarray | None, fixed: np.ndarray | None = None):
     """Calculate how much every possible swap would improve the design.
 
     Returns a matrix with one row per design run and one column per candidate. Using
     the matrix inversion lemma avoids refitting the design for each possible swap.
     """
     X = C[chosen]
-    inverse = np.linalg.inv(X.T @ X + _RIDGE * np.eye(C.shape[1]))
+    inverse = np.linalg.inv(_information(X, fixed))
     CM = C @ inverse
     XM = X @ inverse
     d_c = np.sum(CM * C, axis=1)
@@ -116,10 +123,10 @@ def _swap_gains(C: np.ndarray, chosen: np.ndarray, criterion: str, moments: np.n
     return gains
 
 
-def _exchange(C, chosen, criterion, moments, max_steps) -> np.ndarray:
+def _exchange(C, chosen, criterion, moments, max_steps, fixed=None) -> np.ndarray:
     chosen = chosen.copy()
     for _ in range(max_steps):
-        gains = _swap_gains(C, chosen, criterion, moments)
+        gains = _swap_gains(C, chosen, criterion, moments, fixed)
         i, j = np.unravel_index(np.argmax(gains), gains.shape)
         if gains[i, j] <= 1e-9:
             break
@@ -127,28 +134,46 @@ def _exchange(C, chosen, criterion, moments, max_steps) -> np.ndarray:
     return chosen
 
 
-def design_score(C: np.ndarray, chosen: np.ndarray, criterion: str, moments: np.ndarray | None) -> float:
+def design_score(C: np.ndarray, chosen: np.ndarray, criterion: str, moments: np.ndarray | None, fixed: np.ndarray | None = None) -> float:
     """Score a design so that lower is better, for either criterion."""
-    X = C[chosen]
-    information = X.T @ X
-    sign, log_det = np.linalg.slogdet(information + _RIDGE * np.eye(C.shape[1]))
+    information = _information(C[chosen], fixed)
+    sign, log_det = np.linalg.slogdet(information)
     if criterion == "D":
         return -log_det if sign > 0 else np.inf
-    return float(np.trace(np.linalg.solve(information + _RIDGE * np.eye(C.shape[1]), moments)))
+    return float(np.trace(np.linalg.solve(information, moments)))
 
 
-def exchange_search(C: np.ndarray, runs: int, criterion: str, rng, starts: int = 20) -> np.ndarray:
-    """Run the exchange from several starting designs and keep the best result."""
+def default_starts(candidates: int, runs: int, size: int) -> int:
+    """Choose how many starting designs to try. Larger problems take longer per start, and
+    many starts add little, so they get fewer."""
+    work = candidates * runs * size
+    return 20 if work < 1_000_000 else 8 if work < 5_000_000 else 3
+
+
+def exchange_search(
+    C: np.ndarray,
+    runs: int,
+    criterion: str,
+    rng,
+    starts: int = 20,
+    fixed: np.ndarray | None = None,
+    moments: np.ndarray | None = None,
+) -> np.ndarray:
+    """Run the exchange from several starting designs and keep the best result.
+
+    ``fixed`` holds the model matrix of runs that can't change, such as experiments already
+    done. They count towards the information, but the search only chooses the other runs.
+    """
     if criterion not in ("D", "I"):
         raise ValueError("criterion must be 'D' or 'I'")
-    moments = C.T @ C / len(C)
+    moments = C.T @ C / len(C) if moments is None else moments
     max_steps = 25 * runs
     best, best_score = None, np.inf
     for _ in range(starts):
-        chosen = _exchange(C, _start(C, runs, rng), "D", None, max_steps)
+        chosen = _exchange(C, _start(C, runs, rng, fixed), "D", None, max_steps, fixed)
         if criterion == "I":
-            chosen = _exchange(C, chosen, "I", moments, max_steps)
-        score = design_score(C, chosen, criterion, moments)
+            chosen = _exchange(C, chosen, "I", moments, max_steps, fixed)
+        score = design_score(C, chosen, criterion, moments, fixed)
         if score < best_score:
             best, best_score = chosen, score
     return best
@@ -186,10 +211,8 @@ def _optimal(study: Study, options: dict, rng, notes: list[str], criterion: str)
             f"With {total} runs there is little left over to check the model. "
             f"{default_runs} would be more reliable."
         )
-    # Larger problems take longer per start, and many starts add little, so use fewer.
-    work = len(C) * unique_runs * size
-    default_starts = 20 if work < 1_000_000 else 8 if work < 5_000_000 else 3
-    chosen = exchange_search(C, unique_runs, criterion, rng, int(options.get("starts", default_starts)))
+    starts = int(options.get("starts", default_starts(len(C), unique_runs, size)))
+    chosen = exchange_search(C, unique_runs, criterion, rng, starts)
     if np.linalg.matrix_rank(C[chosen]) < size:
         raise StudyError(
             "Couldn't find runs that estimate every model term. Add runs or simplify the model."

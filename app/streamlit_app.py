@@ -19,6 +19,7 @@ import os
 import tempfile
 import traceback
 import zipfile
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -29,6 +30,8 @@ import yaml
 
 from doekit import plots, report
 from doekit.advisor import OBJECTIVES, recommend_designs
+from doekit.augment import GOALS as ADD_RUN_GOALS
+from doekit.augment import augment_design, compare_quality, default_extra_runs, minimum_extra_runs
 from doekit.analysis import (
     ResponseFit,
     anova_table,
@@ -41,7 +44,7 @@ from doekit.analysis import (
 )
 from doekit.designs import DESIGNS, Design, create_design
 from doekit.evaluate import evaluate_design
-from doekit.model import CROSSING_ORDERS, MIXTURE_ORDERS, PROCESS_ORDERS, model_terms
+from doekit.model import CROSSING_ORDERS, MIXTURE_ORDERS, PROCESS_ORDERS, default_mixture_order, default_process_order, model_terms
 from doekit.optimise import desirability_limits, find_optimum
 from doekit.runsheet import build_runsheet, clean_runsheet, notes_as_text, read_runsheet_bytes
 from doekit.saved_study import (
@@ -265,6 +268,7 @@ def init_state() -> None:
         "design_signature": None,
         "design_kind": None,
         "recommendations": None,
+        "run_proposal": None,
         "solutions": None,
         "solutions_key": None,
         "fit_cache": {},
@@ -347,6 +351,7 @@ def _apply_config(config: dict) -> None:
     ss.simulation = simulation
     ss.pop("manual_kind", None)  # start the design dropdown from this study's own design
     ss.recommendations = None
+    ss.run_proposal = None
     ss.design_notes = []
     ss.design_signature = None
     ss.design_kind = None
@@ -532,7 +537,7 @@ def design_changed_warning(study: Study) -> None:
     if ss.sheet is not None and ss.design_signature and ss.design_signature != _factor_signature(current_config()):
         st.warning(
             "The factors have changed since this run sheet was made, so the two may no longer match. "
-            "Create a new design, or undo the change."
+            "Create a new design, or undo the change. If you only widened a range, you can add runs to reach it."
         )
 
 
@@ -819,14 +824,189 @@ def _your_design(study: Study) -> None:
     next_button(PAGE_RESULTS)
 
 
+PROCESS_MODEL_LABELS = {
+    "linear": "Straight lines only",
+    "pure_quadratic": "Curves, without interactions",
+    "interaction": "Straight lines and interactions",
+    "quadratic": "Curves and interactions (needed to find an optimum)",
+    "cubic": "Cubic (needs many runs)",
+}
+MIXTURE_MODEL_LABELS = {
+    "linear": "Simple averaging",
+    "quadratic": "Pairs of components can have synergy",
+    "special_cubic": "Three-way synergy too",
+}
+
+
+def _add_runs_model(study: Study) -> dict:
+    """Let people choose the model the new runs should support, which can be a fuller one."""
+    settings = dict(ss.model_settings)
+    if settings.get("terms"):
+        st.caption("The new runs will suit the hand-written list of model terms in this study's config file.")
+        return settings
+    columns = st.columns(2)
+    if study.process_factors:
+        current = settings.get("process", default_process_order(study))
+        settings["process"] = columns[0].selectbox(
+            "Model for the process settings", list(PROCESS_ORDERS), index=PROCESS_ORDERS.index(current),
+            format_func=PROCESS_MODEL_LABELS.get, key=f"add_process_{current}",
+            help="To go from screening to optimising, choose curves and interactions, and the new runs will make that model possible.",
+        )  # fmt: skip
+    if study.mixture_factors:
+        current = settings.get("mixture", default_mixture_order(study))
+        settings["mixture"] = columns[1].selectbox(
+            "Model for the blend", list(MIXTURE_ORDERS), index=MIXTURE_ORDERS.index(current),
+            format_func=MIXTURE_MODEL_LABELS.get, key=f"add_mixture_{current}",
+        )  # fmt: skip
+    return settings
+
+
+def _add_runs_region(study: Study) -> dict | None:
+    """Let people keep the new runs inside part of each factor's range."""
+    numeric = [factor for factor in study.factors if factor.is_numeric]
+    limit = st.checkbox(
+        "Keep the new runs inside part of the range", key="add_limit_region",
+        help="For example, around promising settings from step 5. Your earlier runs still count towards the model. "
+        "To go beyond a factor's limits, widen them in step 1 first.",
+    )  # fmt: skip
+    if not limit or not numeric:
+        return None
+    base = pd.DataFrame(
+        {
+            "factor": [factor.name for factor in numeric],
+            "low": [float(factor.low) for factor in numeric],
+            "high": [float(factor.high) for factor in numeric],
+        }
+    )
+    edited = st.data_editor(
+        base, key=f"add_region_{_hash(base.to_csv())}", hide_index=True, disabled=["factor"],
+        column_config={name: st.column_config.NumberColumn(name, format="%g", required=True) for name in ("low", "high")},
+    )  # fmt: skip
+    region = {
+        row.factor: (float(row.low), float(row.high))
+        for row, factor in zip(edited.itertuples(), numeric)
+        if float(row.low) != float(factor.low) or float(row.high) != float(factor.high)
+    }
+    return region or None
+
+
+def _accept_new_runs(proposal: dict) -> None:
+    """Add the proposed runs to the run sheet. Earlier results are kept in the study's history."""
+    augmentation = proposal["augmentation"]
+    keep_earlier_results()
+    ss.model_settings = proposal["model"]
+    ss.design_signature = _factor_signature(current_config())
+    block = f", in block {augmentation.block}" if augmentation.block is not None else ""
+    added = len(augmentation.new_runs)
+    ss.design_notes = [
+        *ss.design_notes,
+        f"{added} run(s) added on {datetime.now():%Y-%m-%d}{block}, chosen to suit the runs already there ({augmentation.criterion}-optimal).",
+    ]
+    ss.fit_cache = {}
+    ss.figure_cache = {}
+    ss.run_proposal = None
+    set_sheet(augmentation.sheet)
+    ss.notice = f"Added {added} run(s) to the end of your run sheet. Your earlier runs and results haven't changed."
+
+
+def _add_more_runs(study: Study) -> None:
+    with st.expander("Add more runs to this experiment", expanded=has_results()):
+        st.write(
+            "Your existing runs stay exactly as they are. The search picks the new runs that add the most to them, "
+            "and you can check them before anything changes."
+        )
+        model = _add_runs_model(study)
+        try:
+            trial = replace(study, model=model)
+            columns = [name for name in ("block", *study.factor_names) if name in ss.sheet]
+            noise_df = evaluate_design(trial, ss.sheet[columns]).pure_error_df
+        except StudyError as error:
+            st.error(str(error))
+            return
+
+        new_session = st.checkbox(
+            "I'll do them in a separate session (another day, batch or operator)", value=True, key="add_new_session",
+            help="They go in a new block, so a difference between sessions isn't mistaken for a factor effect. "
+            "If the results were all done together and that's true of these too, untick this.",
+        )  # fmt: skip
+        region = _add_runs_region(study)
+        left, middle = st.columns(2)
+        repeats = int(
+            middle.number_input(
+                "How many of them repeat earlier runs?", min_value=0, step=1, value=2 if noise_df < 3 else 0, key="add_repeats",
+                help="Repeats measure the noise, and show how well a new session matches the old one.",
+            )  # fmt: skip
+        )
+        try:
+            minimum_key = _hash([_sheet_hash(), trial.model, _factor_signature(current_config()), new_session, region, repeats])
+            if ss.get("run_minimum_key") != minimum_key:
+                ss.run_minimum = minimum_extra_runs(trial, ss.sheet, new_session, region, repeats)
+                ss.run_minimum_key = minimum_key
+        except StudyError as error:
+            st.error(str(error))
+            return
+        minimum = ss.run_minimum
+        # A fuller model needs more runs, so raise the number if it's now too low. A number
+        # typed in afterwards is left alone, with a warning below if it's too few.
+        if "add_count" not in ss or (ss.get("add_count_minimum") != minimum and ss.add_count < minimum):
+            ss.add_count = default_extra_runs(minimum)
+        ss.add_count_minimum = minimum
+        count = int(left.number_input("How many new runs?", min_value=1, step=1, key="add_count"))
+        goal = st.radio(
+            "What should they improve most?", list(ADD_RUN_GOALS), format_func=ADD_RUN_GOALS.get, horizontal=True, key="add_goal",
+            help="Better predictions usually suits finding the best settings. Better estimates suits working out which factors matter.",
+        )  # fmt: skip
+        st.caption(f"This model needs at least {max(minimum, 1)} new run(s).")
+        too_few = count < max(minimum, 1) or repeats > count
+        if too_few:
+            st.warning(f"That's too few. Add at least {max(minimum, repeats, 1)} new run(s).")
+
+        key = _hash([_sheet_hash(), current_config(), model, new_session, region, repeats, count, goal])
+        if st.button("Suggest new runs", key="suggest_runs", type="primary", disabled=too_few):
+            try:
+                with st.spinner("Searching for the most useful runs..."):
+                    augmentation = augment_design(trial, ss.sheet, count, goal, repeats, new_session, region)
+                    ss.run_proposal = {
+                        "key": key,
+                        "augmentation": augmentation,
+                        "model": model,
+                        "table": compare_quality(trial, augmentation, float(ss.signal_to_noise)),
+                        "warnings": evaluate_design(trial, augmentation.design_after, augmentation.terms).warnings,
+                    }
+            except StudyError as error:
+                st.error(str(error))
+
+        proposal = ss.run_proposal
+        if not proposal or proposal["key"] != key:
+            return
+        augmentation = proposal["augmentation"]
+        st.markdown("**The new runs**")
+        show_table(augmentation.new_runs)
+        st.markdown("**What they add**")
+        st.dataframe(proposal["table"], hide_index=True, width="stretch")
+        st.caption("Prediction error is in multiples of the noise, so lower is better. Power is the weakest chance of detecting your smallest effect.")
+        if "block" not in augmentation.design_before or augmentation.block not in set(augmentation.design_before["block"]):
+            if augmentation.block is not None:
+                st.caption(
+                    "A separate session adds a block effect to estimate, which uses up one run. "
+                    "With only a few new runs, prediction error can rise slightly at some settings."
+                )
+        for note in [*augmentation.notes, *proposal["warnings"]]:
+            st.info(note)
+        st.button("Add these runs to my run sheet", key="accept_runs", type="primary", on_click=_accept_new_runs, args=(proposal,))
+
+
 def page_design() -> None:
     st.header(PAGE_DESIGN)
     study = require_study()
     if study is None:
         return
     design_changed_warning(study)
-    if ss.sheet is not None and ss.design_kind:
-        _your_design(study)
+    if ss.sheet is not None:
+        if ss.design_kind:
+            _your_design(study)
+            st.divider()
+        _add_more_runs(study)
         st.divider()
         st.subheader("Choose a different design")
     else:
@@ -1302,7 +1482,8 @@ def page_optimise() -> None:
     st.info(
         "**Before you rely on this:** it's a prediction, not a measurement. Prepare these settings and do at least 3 "
         "confirmation runs. If the results fall inside the ranges above, the model is confirmed. If they don't, something "
-        "is missing from the model, so focus the next experiment around this region."
+        "is missing from the model, so focus the next experiment around this region. **Add more runs** in step 2 "
+        "lets you do that and keep the runs you already have."
     )
 
     if len(solutions) > 1:

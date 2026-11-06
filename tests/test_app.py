@@ -256,3 +256,171 @@ def test_manual_page_renders(app):
     go(app, MANUAL)
     text = " ".join(m.value for m in app.markdown)
     assert "Choosing a design" in text
+
+
+# ---------------------------------------------------------------------- adding more runs
+def finish_results(test):
+    """Fill in made-up results by hand, as someone typing them in would."""
+    sheet = test.session_state["sheet"].copy()
+    for index, name in enumerate(test.session_state["responses_current"]["name"]):
+        sheet[name] = 10.0 + index + np.arange(len(sheet), dtype=float)
+    sheet["notes"] = ""
+    sheet.loc[0, "notes"] = "first run"
+    test.session_state["sheet"] = sheet
+    test.run()
+    no_problems(test)
+    return sheet
+
+
+def test_adding_runs_previews_first_then_keeps_every_result(app, tmp_path):
+    load_example(app)
+    make_design(app)
+    before = finish_results(app)
+    go(app, DESIGN)
+    assert not [b for b in app.button if b.key == "accept_runs"]
+
+    app.number_input(key="add_count").set_value(6)
+    app.number_input(key="add_repeats").set_value(1)
+    app.run()
+    app.button(key="suggest_runs").click()
+    app.run()
+    no_problems(app)
+    pd.testing.assert_frame_equal(app.session_state["sheet"], before)  # a preview changes nothing
+    assert any("What they add" in m.value for m in app.markdown)
+
+    app.button(key="accept_runs").click()
+    app.run()
+    no_problems(app)
+    after = app.session_state["sheet"]
+    assert len(after) == len(before) + 6
+    names = list(app.session_state["responses_current"]["name"])
+    pd.testing.assert_frame_equal(after[names].iloc[: len(before)], before[names], check_dtype=False)
+    assert after[names].iloc[len(before) :].isna().all().all()
+    assert after.loc[0, "notes"] == "first run"
+    assert after["block"].iloc[-1] == after["block"].iloc[0] + 1
+    assert any("Added 6 run(s)" in s.value for s in app.success)
+    assert any("6 run(s) added" in i.value for i in app.info)
+    assert app.session_state["run_proposal"] is None
+
+    # The earlier results are kept, and the new sheet works on every other step.
+    assert app.session_state["solutions"] is None
+    for page in (RESULTS, ANALYSE, OPTIMISE, DESIGN):
+        go(app, page)
+
+
+def test_added_runs_survive_a_refresh_and_earlier_results_are_kept(app, tmp_path, monkeypatch):
+    monkeypatch.setenv("DOEKIT_SAVE_DIR", str(tmp_path))
+    load_example(app)
+    make_design(app)
+    before = finish_results(app)
+    go(app, DESIGN)
+    app.number_input(key="add_count").set_value(5)
+    app.number_input(key="add_repeats").set_value(0)
+    app.run()
+    app.button(key="suggest_runs").click()
+    app.run()
+    app.button(key="accept_runs").click()
+    app.run()
+    no_problems(app)
+
+    studies = [path for path in tmp_path.rglob("*.yaml") if "history" not in path.parts]
+    assert len(studies) == 1
+    assert len(list(tmp_path.rglob("history/*"))) == 1
+
+    from doekit.saved_study import read_document, read_table
+
+    document = read_document(studies[0])
+    assert len(read_table(document["runsheet_csv"])) == len(before) + 5
+    assert any("added on" in note for note in document["state"]["design_notes"])
+
+
+def test_a_changed_setting_clears_the_preview(app):
+    load_example(app)
+    make_design(app)
+    finish_results(app)
+    go(app, DESIGN)
+    app.number_input(key="add_count").set_value(6)
+    app.run()
+    app.button(key="suggest_runs").click()
+    app.run()
+    assert [b for b in app.button if b.key == "accept_runs"]
+    app.number_input(key="add_count").set_value(7)
+    app.run()
+    no_problems(app)
+    assert not [b for b in app.button if b.key == "accept_runs"]
+
+
+def test_too_few_runs_are_explained_before_searching(app):
+    load_example(app)
+    make_design(app)
+    finish_results(app)
+    go(app, DESIGN)
+    app.number_input(key="add_repeats").set_value(3)
+    app.run()
+    app.number_input(key="add_count").set_value(2)
+    app.run()
+    assert not app.exception
+    assert app.button(key="suggest_runs").disabled
+    assert any("too few" in w.value for w in app.warning)
+
+
+def test_screening_data_can_be_upgraded_to_a_curved_model(app):
+    """Upload screening results, then ask for the runs that make curvature possible."""
+    load_example(app, "Template: screen 4 to 11 factors")
+    go(app, DESIGN)
+    app.radio(key="objective").set_value("screen")
+    app.run()
+    app.button(key="suggest").click()
+    app.run()
+    app.button(key="use_0").click()
+    app.run()
+    no_problems(app)
+    sheet = finish_results(app)
+    go(app, DESIGN)
+    count_before = int(app.number_input(key="add_count").value)
+    box = next(s for s in app.selectbox if s.key.startswith("add_process_"))
+    box.set_value("quadratic")
+    app.run()
+    no_problems(app)
+    # The fuller model needs more runs, so the number goes up without having to retype it.
+    count = int(app.number_input(key="add_count").value)
+    assert count > count_before
+    app.button(key="suggest_runs").click()
+    app.run()
+    no_problems(app)
+    app.button(key="accept_runs").click()
+    app.run()
+    no_problems(app)
+    assert app.session_state["model_settings"]["process"] == "quadratic"
+    assert len(app.session_state["sheet"]) == len(sheet) + count
+
+
+def test_uploaded_data_with_no_design_can_have_runs_added(app):
+    load_example(app, "Template: optimise 3 to 5 numeric factors, avoiding extreme corners")
+    make_design(app)
+    sheet = finish_results(app)
+    app.session_state["design_kind"] = None
+    go(app, DESIGN)
+    assert any("Choose a different design" in s.value for s in app.subheader)
+    app.number_input(key="add_count").set_value(4)
+    app.number_input(key="add_repeats").set_value(0)
+    app.run()
+    app.button(key="suggest_runs").click()
+    app.run()
+    app.button(key="accept_runs").click()
+    app.run()
+    no_problems(app)
+    assert len(app.session_state["sheet"]) == len(sheet) + 4
+
+
+def test_region_table_lists_the_numeric_factors(app):
+    """This test tool can't type into a table. The limits themselves are tested in test_augment.py."""
+    load_example(app, "Template: optimise 3 to 5 numeric factors, avoiding extreme corners")
+    make_design(app)
+    finish_results(app)
+    go(app, DESIGN)
+    app.checkbox(key="add_limit_region").check()
+    app.run()
+    no_problems(app)
+    names = list(app.session_state["factors_current"]["name"])
+    assert any(frame.value["factor"].tolist() == names for frame in app.dataframe if "factor" in frame.value)

@@ -18,6 +18,21 @@ from .study import Study, StudyError
 SIMULATED_NOTE = "SIMULATED - not a real measurement"
 
 
+def fill_blank_results(study: Study, sheet: pd.DataFrame, seed: int | None = None) -> pd.DataFrame:
+    """Simulate only the results that are still blank, leaving existing results alone."""
+    simulated = simulate_responses(study, sheet, seed)
+    out = sheet.copy()
+    filled = pd.Series(False, index=out.index)
+    for name in study.response_names:
+        blank = out[name].isna()
+        out[name] = out[name].where(~blank, simulated[name])
+        filled |= blank
+    if "notes" not in out:
+        out["notes"] = ""
+    out["notes"] = out["notes"].astype(object).where(~filled, SIMULATED_NOTE)
+    return out
+
+
 def simulate_responses(study: Study, sheet: pd.DataFrame, seed: int | None = None) -> pd.DataFrame:
     """Calculate each response from its formula, then add noise.
 

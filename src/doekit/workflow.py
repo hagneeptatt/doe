@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -14,13 +15,15 @@ import yaml
 
 from . import plots, report
 from .advisor import recommend_designs
+from .augment import augment_design, compare_quality
 from .analysis import ResponseFit, anova_table, coefficient_table, fit_all, run_diagnostics
 from .designs import DESIGNS, create_design
 from .evaluate import evaluate_design
 from .model import model_terms
 from .optimise import desirability_limits, find_optimum
 from .runsheet import read_runsheet, write_runsheet
-from .simulate import simulate_responses
+from .saved_study import write_atomically
+from .simulate import fill_blank_results, simulate_responses
 from .study import Study, StudyError, load_study
 
 
@@ -67,16 +70,52 @@ def simulate_step(config, force: bool = False) -> Path:
     """Fill the run sheet with made-up results, for practising the workflow."""
     study = load_study(config)
     sheet = read_runsheet(study)
-    if sheet[study.response_names].notna().any().any() and not force:
+    results = sheet[study.response_names]
+    if force:
+        simulated = simulate_responses(study, sheet)
+    elif results.isna().any().any() and results.notna().any().any():
+        simulated = fill_blank_results(study, sheet)  # for example, after adding runs
+    elif results.notna().any().any():
         raise StudyError(
             f"The run sheet at {study.runsheet_path} already has results, so they were not replaced. "
             "Use --force if you're sure they can be overwritten."
         )
-    simulated = simulate_responses(study, sheet)
+    else:
+        simulated = simulate_responses(study, sheet)
     simulated.to_csv(study.runsheet_path, index=False)
     print(f"Simulated results written to {study.runsheet_path}")
     print("These are made up, for practice. They are not real measurements.")
     return study.runsheet_path
+
+
+def add_runs_step(
+    config,
+    runs: int,
+    criterion: str = "I",
+    replicate_runs: int = 0,
+    new_block: bool = True,
+    region: dict | None = None,
+) -> Path:
+    """Add the most useful new runs to a study's run sheet, keeping a copy of the old sheet."""
+    study = load_study(config)
+    sheet = read_runsheet(study)
+    augmentation = augment_design(study, sheet, runs, criterion, replicate_runs, new_block, region)
+
+    path = study.runsheet_path
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup = path.with_name(f"{path.stem}_before_adding_runs_{stamp}{path.suffix}")
+    backup.write_bytes(path.read_bytes())
+    write_atomically(path, augmentation.sheet.to_csv(index=False).encode("utf-8"))
+
+    print(f"\nNew runs for {study.name}:\n")
+    print(augmentation.new_runs.to_string(index=False))
+    print("\nWhat they add:\n")
+    print(compare_quality(study, augmentation).to_string(index=False))
+    for note in augmentation.notes:
+        print(f"\nNote: {note}")
+    print(f"\nRun sheet: {path}")
+    print(f"Previous version kept at: {backup}")
+    return path
 
 
 def save_fit_outputs(fit: ResponseFit, folder: Path) -> str:
