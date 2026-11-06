@@ -204,12 +204,12 @@ def test_stopping_leaves_other_programs_on_the_port_alone():
 
 @pytest.mark.skipif(sys.platform != "win32", reason="makes a real Windows shortcut")
 def test_windows_shortcut_is_made_and_points_at_the_launcher(tmp_path):
-    from doekit.shortcut import make_windows_shortcut
+    from doekit.shortcut import _powershell_text, make_windows_shortcut
 
     made = make_windows_shortcut(tmp_path)
     assert made == [tmp_path / "doekit.lnk"] and made[0].exists()
     read_back = (
-        "$link = (New-Object -ComObject WScript.Shell).CreateShortcut(" + repr(str(made[0])) + "); "
+        "$link = (New-Object -ComObject WScript.Shell).CreateShortcut(" + _powershell_text(str(made[0])) + "); "
         "Write-Output $link.TargetPath; Write-Output $link.Arguments; Write-Output $link.IconLocation"
     )
     target, arguments, icon = subprocess.run(["powershell", "-NoProfile", "-Command", read_back], capture_output=True, text=True).stdout.splitlines()[:3]

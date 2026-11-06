@@ -1,5 +1,5 @@
 # Runs every test on Windows, macOS and Linux whenever changes are pushed to GitHub.
-# Results are on the repository's Actions tab.
+# Results are on the repository's Actions tab, and failed tests are listed on each run's page.
 name: tests
 
 on:
@@ -30,14 +30,38 @@ jobs:
           miniforge-version: latest
           environment-file: environment.yml
           activate-environment: doe
-          auto-activate-base: false
+          conda-remove-defaults: "true"
+
+      - name: Check the environment
+        run: |
+          conda info --envs
+          python -c "import sys, doekit, streamlit; print(sys.executable, doekit.__file__, streamlit.__version__)"
 
       - name: Run the tests
+        run: python -m pytest -p no:logging -rfE --tb=short --junitxml=report.xml
+
+      # Logs need a GitHub login to read, but these notes show on the run's public page.
+      - name: List any failed tests
+        if: always()
         run: |
-          python -m pytest -p no:logging -rfE --tb=short 2>&1 | tee pytest.log
-          status=${PIPESTATUS[0]}
-          if [ "$status" != "0" ]; then
-            # Show which tests failed on the run's summary page.
-            grep -E "^(FAILED|ERROR) " pytest.log | head -20 | while IFS= read -r line; do echo "::error::$line"; done
-          fi
-          exit $status
+          python - <<'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+
+          if not os.path.exists("report.xml"):
+              print("::error::The tests didn't finish, so there is no report. See the log of the step above.")
+              raise SystemExit
+          suite = ET.parse("report.xml").getroot()
+          suite = suite.find("testsuite") if suite.tag == "testsuites" else suite
+          counts = {key: suite.get(key) for key in ("tests", "failures", "errors", "skipped")}
+          lines = []
+          for case in suite.iter("testcase"):
+              for problem in list(case.findall("failure")) + list(case.findall("error")):
+                  message = (problem.get("message") or problem.text or "").strip().replace("\n", " ")[:400]
+                  lines.append(f"{case.get('classname')}.{case.get('name')}: {message}")
+          summary = f"{counts['tests']} tests, {counts['failures']} failed, {counts['errors']} errors, {counts['skipped']} skipped"
+          if lines:
+              print("::error title=" + summary + "::" + "%0A".join(lines[:40]))
+          else:
+              print("::notice title=Tests::" + summary)
+          EOF
