@@ -16,7 +16,9 @@ import hashlib
 import io
 import json
 import os
+import signal
 import tempfile
+import threading
 import traceback
 import zipfile
 from dataclasses import replace
@@ -63,6 +65,7 @@ from doekit.study import FACTOR_KINDS, GOALS, TRANSFORMS, Study, StudyError, stu
 from doekit.workflow import save_fit_outputs, save_optimum_outputs
 
 ROOT = Path(__file__).resolve().parents[1]
+ICON = ROOT / "app" / "assets" / "doekit_icon.png"
 ss = st.session_state
 
 FACTOR_COLUMNS = ["name", "type", "low", "high", "levels", "units"]
@@ -1590,10 +1593,30 @@ def _sidebar_footer(footer) -> None:
                 on_click="ignore",
                 help="One file with your settings, design and results. Load it in step 1 to carry on, on any computer.",
             )
+        _close_button()
+
+
+def started_from_icon() -> bool:
+    """The icon's launcher runs the app in the background, so there's no terminal to stop it from.
+    Only someone on this computer gets the button, never a visitor to a shared copy."""
+    return os.environ.get("DOEKIT_LAUNCHER") == "1" and st.context.ip_address is None
+
+
+def stop_app() -> None:
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
+def _close_button() -> None:
+    if not started_from_icon():
+        return
+    if st.button("Close doekit", key="close_app", help="Stops doekit on this computer. Your work is saved first."):
+        autosave()
+        st.success("doekit has stopped. You can close this tab, and start it again from its icon.")
+        threading.Timer(1.0, stop_app).start()  # a moment's delay, so this message reaches the page
 
 
 def main() -> None:
-    st.set_page_config(page_title="doekit: design of experiments", page_icon="🧪", layout="wide")
+    st.set_page_config(page_title="doekit: design of experiments", page_icon=str(ICON), layout="wide")
     init_state()
     if "pending_page" in ss:
         ss.page = ss.pop("pending_page")

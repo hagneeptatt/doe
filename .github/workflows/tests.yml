@@ -1,0 +1,43 @@
+# Runs every test on Windows, macOS and Linux whenever changes are pushed to GitHub.
+# Results are on the repository's Actions tab.
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    defaults:
+      run:
+        shell: bash -el {0}
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same conda environment people install, from conda-forge only.
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: doe
+          auto-activate-base: false
+
+      - name: Run the tests
+        run: |
+          python -m pytest -p no:logging -rfE --tb=short 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" != "0" ]; then
+            # Show which tests failed on the run's summary page.
+            grep -E "^(FAILED|ERROR) " pytest.log | head -20 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit $status

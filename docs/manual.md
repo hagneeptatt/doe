@@ -409,16 +409,27 @@ conda env create -f environment.yml
 
 The last command can take a few minutes. If it says the `doe` environment already exists, run `conda activate doe` and then `pip install -e .` instead.
 
-**Then start it each time you use it,** from the `doe` folder:
+**Make an icon to start it with a double-click.** This is optional, and you only need to do it once. From the `doe` folder, run:
+
+```bash
+conda activate doe
+python scripts/make_shortcut.py
+```
+
+This puts a **doekit** icon on your Desktop, and on Windows it also adds doekit to the Start menu. Double-click the icon to start doekit. After a few seconds it opens in your browser, at <http://localhost:8510>, and stays private to your computer. Clicking the icon again while doekit is running just opens it again. On a Mac, the icon stays in the Dock while doekit is running, so you can click it there too.
+
+To stop doekit, choose **Close doekit** at the bottom of the sidebar. On a Mac, you can also right-click the icon in the Dock and choose **Quit**. If you only close the browser tab, doekit keeps running in the background. That does no harm, and the icon reopens it. If you move the `doe` folder or set it up again, run the command again. The icon has been tested on macOS, but not yet on Windows or Linux.
+
+**Or start it from a terminal each time,** from the `doe` folder:
 
 ```bash
 conda activate doe
 streamlit run app/streamlit_app.py --server.address localhost
 ```
 
-The app opens in your browser. If it doesn't, go to <http://localhost:8501>. `--server.address localhost` keeps it private to your computer. Without it, other people on your network may be able to open the app. To stop it, press Ctrl+C in the terminal.
+Then go to <http://localhost:8501> in your browser. `--server.address localhost` keeps it private to your computer. Without it, other people on your network may be able to open the app. To stop it, press Ctrl+C in the terminal.
 
-**To update to a new version,** stop the app, then run these from the `doe` folder and start it again. Your saved studies and your own config files stay as they are.
+**To update to a new version,** stop the app, then run these from the `doe` folder and start it again. Your icon keeps working. Your saved studies and your own config files stay as they are.
 
 ```bash
 git pull
@@ -431,7 +442,7 @@ pip install -e .
 1. To set up, go to the [project's GitHub page](https://github.com/hagneeptatt/doe), choose **Code**, then **Download ZIP**, and unzip it. Then open a terminal in that folder and run `conda env create -f environment.yml`.
 2. To update, download and unzip the new version, and keep your old folder for now. Copy `data/app_studies` from your old folder into the `data` folder of the new one.
 3. Open a terminal in the new folder and run `conda activate doe`, then `pip install -e .`. This matters because the `doe` environment keeps using the code in your old folder until you do.
-4. From now on, start the app from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
+4. From now on, start the app from the new folder. If you made an icon, make it again from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
 
 ### The steps
 
@@ -607,6 +618,8 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 |---|---|---|
 | "Your local changes... would be overwritten by merge" | `git pull` stopped because you've edited a file it needs to update. Nothing has changed | Copy your version of that file somewhere else if you want to keep it. Then run `git restore` followed by the file's path, and run `git pull` again |
 | "No module named 'doekit.saved_study'" | The `doe` environment is still using the code in an old folder | Run `conda activate doe`, then `pip install -e .`, from the folder you start the app from |
+| The icon says "doekit couldn't start" | The message says why, and the details are in `data/doekit_app.log` in the `doe` folder | If you moved the `doe` folder, run `python scripts/make_shortcut.py` again from its new place. Otherwise, start doekit from a terminal once to see the problem |
+| On a Mac: "doekit can't be opened because it is from an unidentified developer" | The icon was copied from another computer, rather than made on yours | Make your own icon with `python scripts/make_shortcut.py` |
 | "For better performance, install the Watchdog module" | The app only reloads more slowly when its code files change. Your results aren't affected | You can ignore it, or run `pip install watchdog` and restart the app |
 | "This model can't be estimated" | The design doesn't have enough distinct runs to separate these terms | Use a simpler model, or a design with more runs |
 | "These can't be told apart" | Two effects are confounded in this design | Use a higher-resolution design, or choose which term to keep |

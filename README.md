@@ -18,7 +18,7 @@ conda activate doe
 streamlit run app/streamlit_app.py --server.address localhost
 ```
 
-The app opens in your browser and stays private to your computer. Your work is saved automatically as you go, and you can carry on with a saved study from step 1. In step 1, load the worked example to see a complete study with simulated results.
+Then go to <http://localhost:8501> in your browser. The app stays private to your computer. To start it with a double-click instead, run `python scripts/make_shortcut.py` once, which puts a doekit icon on your Desktop. Your work is saved automatically as you go, and you can carry on with a saved study from step 1. In step 1, load the worked example to see a complete study with simulated results.
 
 Or run the same example with scripts:
 
