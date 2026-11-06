@@ -7,7 +7,7 @@ import socket
 import subprocess
 import sys
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 from PIL import Image
@@ -108,7 +108,7 @@ def test_a_moved_folder_is_explained(tmp_path, no_browser):
 
 # ---------------------------------------------------------------------- making the icon
 def test_mac_icon_script_starts_reopens_watches_and_stops_doekit():
-    root = Path("/Users/me/My Documents/doe")  # spaces must survive
+    root = PurePosixPath("/Users/me/My Documents/doe")  # spaces must survive, and so must / on Windows
     script = mac_script(root=root, python="/opt/conda/envs/doe/bin/python", port=8510)
     start = "cd '/Users/me/My Documents/doe' && /opt/conda/envs/doe/bin/python -m doekit.launcher --root '/Users/me/My Documents/doe' --port 8510"
     assert f'do shell script "{start}"' in script
@@ -160,7 +160,7 @@ def test_windows_shortcut_uses_the_windowless_python_and_quotes_paths(tmp_path):
 
 
 def test_linux_entry_runs_the_launcher():
-    entry = desktop_entry(root=Path("/home/me/doe"), python="/home/me/conda/envs/doe/bin/python")
+    entry = desktop_entry(root=PurePosixPath("/home/me/doe"), python="/home/me/conda/envs/doe/bin/python")
     assert "Exec=/home/me/conda/envs/doe/bin/python -m doekit.launcher --root /home/me/doe" in entry
     assert "Terminal=false" in entry
 
