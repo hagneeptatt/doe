@@ -8,7 +8,45 @@ doekit takes you through a whole design of experiments (DOE) study. It helps you
 
 **New to DOE, or choosing a design? Start with the [manual](docs/manual.md),** which is also available as a [PDF](docs/doekit_manual.pdf) you can read without installing anything. It also lists [the methods behind each step](docs/manual.md#11-methods-behind-each-step), with their sources.
 
-## Quick start
+## Install doekit
+
+You don't need to know how to code. Installing takes about 10 minutes, needs about 2 GB of disk space, and doesn't need administrator rights. Everything goes in one folder called `doekit`, in your user folder, and nothing else on your computer is changed.
+
+### On a Mac
+
+1. Open **Terminal**: press ⌘ and Space together, type `Terminal`, and press Return.
+2. Copy this line, click in the Terminal window, paste it with ⌘ V, and press Return:
+
+   ```
+   curl -fsSL https://raw.githubusercontent.com/hagneeptatt/doe/main/install.sh | bash
+   ```
+
+3. Wait until it says **doekit is installed**. doekit then opens in your browser, and a doekit icon appears on your Desktop. You can close Terminal.
+
+### On Windows
+
+1. Open **Windows PowerShell**: click Start, type `PowerShell`, and choose **Windows PowerShell**.
+2. Copy this line, click in the PowerShell window, paste it by right-clicking, and press Enter:
+
+   ```
+   irm https://raw.githubusercontent.com/hagneeptatt/doe/main/install.ps1 | iex
+   ```
+
+3. Wait until it says **doekit is installed**. doekit then opens in your browser, and a doekit shortcut appears on your Desktop and in the Start menu. You can close PowerShell.
+
+### Using it
+
+Double-click the doekit icon to start doekit. It opens in your browser and stays private to your computer, and your work is saved automatically as you go. To stop it, choose **Close doekit** at the bottom of the sidebar. To see a complete study first, load the worked example in step 1.
+
+**To update** to a new version, follow the same steps again. Your saved studies are kept.
+
+**To remove doekit,** delete the `doekit` folder and the doekit icon. This also deletes your saved studies, so first download any you want to keep, with **Download my study** in the sidebar.
+
+If something goes wrong, see [Troubleshooting](docs/manual.md#9-troubleshooting) in the manual.
+
+## For people who code
+
+To work with the code itself, install it with Git and conda instead:
 
 ```bash
 git clone https://github.com/hagneeptatt/doe.git
@@ -18,9 +56,9 @@ conda activate doe
 streamlit run app/streamlit_app.py --server.address localhost
 ```
 
-Then go to <http://localhost:8501> in your browser. The app stays private to your computer. To start it with a double-click instead, run `python scripts/make_shortcut.py` once, which puts a doekit icon on your Desktop. Your work is saved automatically as you go, and you can carry on with a saved study from step 1. In step 1, load the worked example to see a complete study with simulated results.
+Then go to <http://localhost:8501> in your browser. To start it with a double-click instead, run `python scripts/make_shortcut.py` once, which puts a doekit icon on your Desktop.
 
-Or run the same example with scripts:
+Or run the worked example with scripts:
 
 ```bash
 python scripts/1_create_design.py   configs/examples/hydrogel_bioink_simulated.yaml

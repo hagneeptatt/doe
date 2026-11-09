@@ -390,9 +390,33 @@ If someone hosts the app for your group, open the address they give you. Otherwi
 
 ### Running it on your own computer
 
-The app then runs entirely on your computer, so your data stays there and you don't depend on anyone else's machine. This has been tested on macOS. Windows should work, but hasn't been tested yet.
+The app then runs entirely on your computer, so your data stays there and you don't depend on anyone else's machine. doekit is tested automatically on Windows, macOS and Linux.
 
-**Set it up once:**
+**The easiest way to install it** needs no coding experience and no administrator rights. It takes about 10 minutes and about 2 GB of disk space. Everything goes in one folder called `doekit` in your user folder, and nothing else on your computer is changed.
+
+- **On a Mac:** open **Terminal**. To do that, press ⌘ and Space together, type `Terminal`, and press Return. Paste this line into it, and press Return:
+
+  ```
+  curl -fsSL https://raw.githubusercontent.com/hagneeptatt/doe/main/install.sh | bash
+  ```
+
+- **On Windows:** open **Windows PowerShell**. To do that, click Start, type `PowerShell`, and choose **Windows PowerShell**. Paste this line into it by right-clicking, and press Enter:
+
+  ```
+  irm https://raw.githubusercontent.com/hagneeptatt/doe/main/install.ps1 | iex
+  ```
+
+Wait until it says **doekit is installed**. It then opens doekit in your browser and puts a doekit icon on your Desktop. On Windows, it also adds doekit to the Start menu. If your Windows user name contains a space, the folder is `C:\doekit` instead, because conda doesn't cope well with spaces in folder names.
+
+**To update,** paste the same line again. Your saved studies are kept, and so is a copy of the previous version, in `doekit/doe-previous`.
+
+**To remove doekit,** delete the `doekit` folder and the icon. This also deletes your saved studies, so first download any you want to keep, with **Download my study** in the sidebar.
+
+**Starting and stopping it.** Double-click the icon to start doekit. After a few seconds it opens in your browser, at <http://localhost:8510>, and stays private to your computer. Clicking the icon again while doekit is running just opens it again. On a Mac, the icon stays in the Dock while doekit is running, so you can click it there too.
+
+To stop doekit, choose **Close doekit** at the bottom of the sidebar. On a Mac, you can also right-click the icon in the Dock and choose **Quit**. If you only close the browser tab, doekit keeps running in the background. That does no harm, and the icon reopens it.
+
+**If you code, or want to work with the files directly,** install it with Git and conda instead. Set it up once:
 
 1. Install [Miniconda](https://docs.conda.io/projects/miniconda/), if you don't already have conda.
 2. Install Git, if you don't already have it. You don't need a Git or GitHub account. To check, open a terminal (on Windows, use Anaconda Prompt) and run `git --version`. If it isn't installed:
@@ -409,18 +433,7 @@ conda env create -f environment.yml
 
 The last command can take a few minutes. If it says the `doe` environment already exists, run `conda activate doe` and then `pip install -e .` instead.
 
-**Make an icon to start it with a double-click.** This is optional, and you only need to do it once. From the `doe` folder, run:
-
-```bash
-conda activate doe
-python scripts/make_shortcut.py
-```
-
-This puts a **doekit** icon on your Desktop, and on Windows it also adds doekit to the Start menu. Double-click the icon to start doekit. After a few seconds it opens in your browser, at <http://localhost:8510>, and stays private to your computer. Clicking the icon again while doekit is running just opens it again. On a Mac, the icon stays in the Dock while doekit is running, so you can click it there too.
-
-To stop doekit, choose **Close doekit** at the bottom of the sidebar. On a Mac, you can also right-click the icon in the Dock and choose **Quit**. If you only close the browser tab, doekit keeps running in the background. That does no harm, and the icon reopens it. If you move the `doe` folder or set it up again, run the command again. The icon has been tested on macOS, but not yet on Windows or Linux.
-
-**Or start it from a terminal each time,** from the `doe` folder:
+To make the doekit icon, run `conda activate doe` and then `python scripts/make_shortcut.py` from the `doe` folder. If you move the folder or set it up again, run that again. Or start doekit from a terminal each time, from the `doe` folder:
 
 ```bash
 conda activate doe
@@ -429,20 +442,13 @@ streamlit run app/streamlit_app.py --server.address localhost
 
 Then go to <http://localhost:8501> in your browser. `--server.address localhost` keeps it private to your computer. Without it, other people on your network may be able to open the app. To stop it, press Ctrl+C in the terminal.
 
-**To update to a new version,** stop the app, then run these from the `doe` folder and start it again. Your icon keeps working. Your saved studies and your own config files stay as they are.
+To update, stop the app, then run these from the `doe` folder and start it again. Your icon, saved studies and config files stay as they are.
 
 ```bash
 git pull
 conda activate doe
 pip install -e .
 ```
-
-**If you can't use Git,** you can use a ZIP instead, but updating takes more steps:
-
-1. To set up, go to the [project's GitHub page](https://github.com/hagneeptatt/doe), choose **Code**, then **Download ZIP**, and unzip it. Then open a terminal in that folder and run `conda env create -f environment.yml`.
-2. To update, download and unzip the new version, and keep your old folder for now. Copy `data/app_studies` from your old folder into the `data` folder of the new one.
-3. Open a terminal in the new folder and run `conda activate doe`, then `pip install -e .`. This matters because the `doe` environment keeps using the code in your old folder until you do.
-4. From now on, start the app from the new folder. If you made an icon, make it again from the new folder. Once your studies appear in step 1 of the app, you can delete the old folder.
 
 ### The steps
 
@@ -618,6 +624,8 @@ Copy the closest file from `configs/templates/` and edit it. `python scripts/1_c
 |---|---|---|
 | "Your local changes... would be overwritten by merge" | `git pull` stopped because you've edited a file it needs to update. Nothing has changed | Copy your version of that file somewhere else if you want to keep it. Then run `git restore` followed by the file's path, and run `git pull` again |
 | "No module named 'doekit.saved_study'" | The `doe` environment is still using the code in an old folder | Run `conda activate doe`, then `pip install -e .`, from the folder you start the app from |
+| On Windows: "irm is not recognized" or "iex is not recognized" | The line was pasted into Command Prompt, not PowerShell | Open **Windows PowerShell**, as in the installation steps, and paste it there |
+| The installer says "Couldn't download" or "Check your internet connection" | It couldn't reach GitHub or conda-forge, where doekit and its packages come from. Some networks block these downloads | Try again, or on another network. If it keeps happening, ask IT to allow github.com and conda.anaconda.org |
 | The icon says "doekit couldn't start" | The message says why, and the details are in `data/doekit_app.log` in the `doe` folder | If you moved the `doe` folder, run `python scripts/make_shortcut.py` again from its new place. Otherwise, start doekit from a terminal once to see the problem |
 | On a Mac: "doekit can't be opened because it is from an unidentified developer" | The icon was copied from another computer, rather than made on yours | Make your own icon with `python scripts/make_shortcut.py` |
 | "For better performance, install the Watchdog module" | The app only reloads more slowly when its code files change. Your results aren't affected | You can ignore it, or run `pip install watchdog` and restart the app |

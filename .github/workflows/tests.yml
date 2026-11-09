@@ -65,3 +65,51 @@ jobs:
           else:
               print("::notice title=Tests::" + summary)
           EOF
+
+  # Installs doekit the way people without coding experience do, then updates it.
+  installer:
+    name: installer on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    env:
+      DOEKIT_NO_START: "1"
+      DOEKIT_PORT: "8598"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install and update with install.sh
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          export DOEKIT_HOME="$RUNNER_TEMP/doekit" DOEKIT_ICON_FOLDER="$RUNNER_TEMP/Desktop"
+          export DOEKIT_ARCHIVE="$RUNNER_TEMP/doekit.tar.gz"  # this version, rather than the latest release
+          git archive --format=tar.gz --prefix=doe/ -o "$DOEKIT_ARCHIVE" HEAD
+          cat install.sh | bash
+          "$DOEKIT_HOME/env/bin/python" .github/check_install.py
+          mkdir -p "$DOEKIT_HOME/doe/data/app_studies"
+          printf "my study" > "$DOEKIT_HOME/doe/data/app_studies/kept.txt"
+          cat install.sh | bash
+          "$DOEKIT_HOME/env/bin/python" .github/check_install.py --after-update
+
+      - name: Install and update with install.ps1
+        if: runner.os == 'Windows'
+        shell: powershell  # Windows PowerShell, which is what people have
+        run: |
+          $env:DOEKIT_HOME = Join-Path $env:RUNNER_TEMP "doekit"
+          $env:DOEKIT_ICON_FOLDER = Join-Path $env:RUNNER_TEMP "Desktop"
+          $env:DOEKIT_ARCHIVE = Join-Path $env:RUNNER_TEMP "doekit.zip"  # this version, rather than the latest release
+          git archive --format=zip --prefix=doe/ -o $env:DOEKIT_ARCHIVE HEAD
+          Get-Content install.ps1 -Raw | Invoke-Expression
+          if ($global:DoekitInstallFailed) { exit 1 }
+          & "$env:DOEKIT_HOME\env\python.exe" .github\check_install.py
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          New-Item -ItemType Directory -Force -Path "$env:DOEKIT_HOME\doe\data\app_studies" | Out-Null
+          Set-Content -NoNewline -Path "$env:DOEKIT_HOME\doe\data\app_studies\kept.txt" -Value "my study"
+          Get-Content install.ps1 -Raw | Invoke-Expression
+          if ($global:DoekitInstallFailed) { exit 1 }
+          & "$env:DOEKIT_HOME\env\python.exe" .github\check_install.py --after-update
+          if ($LASTEXITCODE -ne 0) { exit 1 }
