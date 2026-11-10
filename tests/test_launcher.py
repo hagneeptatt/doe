@@ -159,6 +159,22 @@ def test_windows_shortcut_uses_the_windowless_python_and_quotes_paths(tmp_path):
     assert "doekit.ico,0" in script
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="pretends to be Linux, which Windows paths can't")
+def test_linux_icon_goes_in_a_folder_that_does_not_exist_yet(tmp_path, monkeypatch):
+    from doekit import shortcut
+
+    monkeypatch.setattr(shortcut.sys, "platform", "linux")
+    monkeypatch.setattr(shortcut.os, "name", "posix")
+    made = shortcut.make_shortcut(tmp_path / "new" / "Desktop")
+    assert made == [tmp_path / "new" / "Desktop" / "doekit.desktop"] and made[0].exists()
+
+
+def test_windows_shortcut_script_makes_its_folder_and_stops_on_failure():
+    script = windows_script(["C:/Users/me/Desktop"], root=Path("C:/doe"), python="C:/doe/env/python.exe")
+    assert script.startswith("$ErrorActionPreference = 'Stop'")
+    assert "New-Item -ItemType Directory -Force -Path $folder" in script
+
+
 def test_linux_entry_runs_the_launcher():
     entry = desktop_entry(root=PurePosixPath("/home/me/doe"), python="/home/me/conda/envs/doe/bin/python")
     assert "Exec=/home/me/conda/envs/doe/bin/python -m doekit.launcher --root /home/me/doe" in entry

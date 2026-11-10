@@ -186,8 +186,10 @@ def windows_script(folders: list[str] | None, root: Path = ROOT, python: str | N
     )
     return "\n".join(
         [
+            "$ErrorActionPreference = 'Stop'",  # a shortcut that can't be saved is a failure
             "$shell = New-Object -ComObject WScript.Shell",
             f"foreach ($folder in @({places})) {{",
+            "  New-Item -ItemType Directory -Force -Path $folder | Out-Null",
             f"  $link = $shell.CreateShortcut((Join-Path $folder {_powershell_text(NAME + '.lnk')}))",
             f"  $link.TargetPath = {_powershell_text(str(target))}",
             f"  $link.Arguments = {_powershell_text(arguments)}",
@@ -229,11 +231,11 @@ def desktop_entry(root: Path = ROOT, python: str | None = None) -> str:
 
 
 def make_linux_entry(folder: Path | None = None) -> list[Path]:
-    folders = [folder] if folder else [Path.home() / ".local" / "share" / "applications", desktop_folder()]
+    folders = [Path(folder)] if folder else [Path.home() / ".local" / "share" / "applications", desktop_folder()]
     made = []
     for place in folders:
-        if not place.exists() and place.name == "Desktop":
-            continue
+        if not folder and place == desktop_folder() and not place.exists():
+            continue  # some Linux desktops have no Desktop folder, and that's fine
         place.mkdir(parents=True, exist_ok=True)
         path = place / f"{NAME}.desktop"
         path.write_text(desktop_entry(), encoding="utf-8")
@@ -245,8 +247,14 @@ def make_linux_entry(folder: Path | None = None) -> list[Path]:
 def make_shortcut(folder: Path | None = None) -> list[Path]:
     """Make the icon in the usual place for this computer, or in the folder given."""
     check_environment()
+    if folder:
+        Path(folder).mkdir(parents=True, exist_ok=True)
     if sys.platform == "darwin":
-        return [make_mac_app(folder or desktop_folder())]
-    if os.name == "nt":
-        return make_windows_shortcut(folder)
-    return make_linux_entry(folder)
+        made = [make_mac_app(folder or desktop_folder())]
+    elif os.name == "nt":
+        made = make_windows_shortcut(folder)
+    else:
+        made = make_linux_entry(folder)
+    if not made or not all(Path(path).exists() for path in made):
+        raise ShortcutError("The icon couldn't be made. You can still start doekit from a terminal, as the manual explains.")
+    return made
