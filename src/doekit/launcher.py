@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import signal
 import socket
@@ -162,9 +163,15 @@ def server_processes(port: int) -> list[int]:
         script = f"(Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue).OwningProcess"
         command = ["powershell", "-NoProfile", "-Command", script]
         result = subprocess.run(command, capture_output=True, text=True, check=False, creationflags=subprocess.CREATE_NO_WINDOW)
-    else:
+    elif shutil.which("lsof") or os.path.exists("/usr/sbin/lsof"):
         lsof = shutil.which("lsof") or "/usr/sbin/lsof"
         result = subprocess.run([lsof, "-t", "-i", f"tcp:{port}", "-sTCP:LISTEN"], capture_output=True, text=True, check=False)
+    elif shutil.which("ss"):
+        # Linux without lsof. ss lists listening sockets with their processes, as "pid=1234".
+        result = subprocess.run(["ss", "-H", "-l", "-t", "-n", "-p", f"sport = :{port}"], capture_output=True, text=True, check=False)
+        return sorted({int(pid) for pid in re.findall(r"pid=(\d+)", result.stdout)})
+    else:
+        return []
     return sorted({int(pid) for pid in result.stdout.split() if pid.isdigit() and int(pid) > 0})
 
 

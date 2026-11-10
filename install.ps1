@@ -17,6 +17,15 @@ function Write-Step([string]$Text) {
     Write-Host "==> $Text" -ForegroundColor Cyan
 }
 
+function Invoke-Program([scriptblock]$Command) {
+    # Windows PowerShell can treat a program's progress messages as errors when its output is
+    # captured, so judge the program by its exit code instead.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $Command | Out-Host } finally { $ErrorActionPreference = $previous }
+    return $LASTEXITCODE  # the output has already been shown, so only this is returned
+}
+
 function Install-Doekit {
     $ErrorActionPreference = "Stop"
     $ProgressPreference = "SilentlyContinue"  # downloads are far slower with a progress bar
@@ -80,7 +89,7 @@ function Install-Doekit {
             Write-Step "Updating your copy of doekit. Your saved studies are kept"
             if (Test-Path $python) {
                 Push-Location $code
-                & $python -m doekit.launcher --stop | Out-Null
+                Invoke-Program { & $python -m doekit.launcher --stop } | Out-Null
                 Pop-Location
             }
             foreach ($keep in "data", "results") {
@@ -100,20 +109,20 @@ function Install-Doekit {
         Push-Location $code
         try {
             if (Test-Path $python) {
-                & $condaExe env update -p $envDir -f environment.yml --prune
+                $status = Invoke-Program { & $condaExe env update -p $envDir -f environment.yml --prune }
             } else {
-                & $condaExe env create -p $envDir -f environment.yml
+                $status = Invoke-Program { & $condaExe env create -p $envDir -f environment.yml }
             }
-            if ($LASTEXITCODE -ne 0) { throw "Couldn't install the packages doekit needs. Check your internet connection, then try again." }
+            if ($status -ne 0) { throw "Couldn't install the packages doekit needs. Check your internet connection, then try again." }
 
             # 5. The shortcut, then start doekit.
             Write-Step "Making the doekit shortcut"
             if ($env:DOEKIT_ICON_FOLDER) {
-                & $python scripts\make_shortcut.py --folder $env:DOEKIT_ICON_FOLDER
+                $status = Invoke-Program { & $python scripts\make_shortcut.py --folder $env:DOEKIT_ICON_FOLDER }
             } else {
-                & $python scripts\make_shortcut.py
+                $status = Invoke-Program { & $python scripts\make_shortcut.py }
             }
-            if ($LASTEXITCODE -ne 0) { throw "Couldn't make the shortcut. You can still start doekit with: $python -m doekit.launcher --root `"$code`"" }
+            if ($status -ne 0) { throw "Couldn't make the shortcut. You can still start doekit with: $python -m doekit.launcher --root `"$code`"" }
         } finally {
             Pop-Location
         }
@@ -131,6 +140,7 @@ function Install-Doekit {
         Write-Host "Problem: $($_.Exception.Message)" -ForegroundColor Red
         Write-Host "Nothing you'd saved in doekit has been lost. Try again, or ask for help with the message above."
         $global:DoekitInstallFailed = $true
+        $global:DoekitInstallError = "$($_.Exception.Message) $($_.InvocationInfo.PositionMessage)"
     } finally {
         Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
     }

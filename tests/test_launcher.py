@@ -187,6 +187,23 @@ def test_the_icons_commands_really_start_and_stop_doekit(tmp_path):
             os.kill(pid, 15)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux and macOS only")
+def test_doekit_is_found_on_linux_without_lsof(monkeypatch):
+    """Some Linux systems have no lsof, but ss comes with almost every one."""
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: "/usr/bin/ss" if name == "ss" else None)
+    monkeypatch.setattr(launcher.os.path, "exists", lambda path: False)
+    listing = 'LISTEN 0 128 127.0.0.1:8510 0.0.0.0:* users:(("python",pid=4321,fd=7))\n'
+    calls = []
+
+    def fake_run(command, **options):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout=listing, stderr="")
+
+    monkeypatch.setattr(launcher.subprocess, "run", fake_run)
+    assert launcher.server_processes(8510) == [4321]
+    assert calls[0][0] == "ss" and "sport = :8510" in calls[0]
+
+
 @pytest.mark.skipif(sys.platform == "win32" or not shutil.which("lsof"), reason="uses lsof")
 def test_stopping_leaves_other_programs_on_the_port_alone():
     port = free_port()

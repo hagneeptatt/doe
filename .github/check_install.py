@@ -6,7 +6,18 @@ DOEKIT_HOME and DOEKIT_ICON_FOLDER set.
 
 import os
 import sys
+import traceback
 from pathlib import Path
+
+
+def report(error: BaseException) -> None:
+    """Show the problem on the run's public page, since the logs need a GitHub login."""
+    if os.environ.get("GITHUB_ACTIONS"):
+        details = "".join(traceback.format_exception(error)).replace("%", "%25").replace("\n", "%0A")
+        print(f"::error title=check_install.py failed::{details}")
+
+
+sys.excepthook = lambda kind, error, trace: (report(error), sys.__excepthook__(kind, error, trace))
 
 home = Path(os.environ["DOEKIT_HOME"]).resolve()
 code = home / "doe"

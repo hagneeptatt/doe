@@ -88,12 +88,21 @@ jobs:
           export DOEKIT_HOME="$RUNNER_TEMP/doekit" DOEKIT_ICON_FOLDER="$RUNNER_TEMP/Desktop"
           export DOEKIT_ARCHIVE="$RUNNER_TEMP/doekit.tar.gz"  # this version, rather than the latest release
           git archive --format=tar.gz --prefix=doe/ -o "$DOEKIT_ARCHIVE" HEAD
-          cat install.sh | bash
+          log="$RUNNER_TEMP/install.log"
+          cat install.sh | bash 2>&1 | tee -a "$log"
           "$DOEKIT_HOME/env/bin/python" .github/check_install.py
           mkdir -p "$DOEKIT_HOME/doe/data/app_studies"
           printf "my study" > "$DOEKIT_HOME/doe/data/app_studies/kept.txt"
-          cat install.sh | bash
+          cat install.sh | bash 2>&1 | tee -a "$log"
           "$DOEKIT_HOME/env/bin/python" .github/check_install.py --after-update
+
+      - name: Show the end of the installer's output
+        if: failure() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          [ -f "$RUNNER_TEMP/install.log" ] || exit 0
+          message="$(tail -n 40 "$RUNNER_TEMP/install.log" | sed 's/%/%25/g' | awk 'BEGIN { ORS = "%0A" } { print }')"
+          echo "::error title=End of the installer's output::$message"
 
       - name: Install and update with install.ps1
         if: runner.os == 'Windows'
@@ -104,12 +113,12 @@ jobs:
           $env:DOEKIT_ARCHIVE = Join-Path $env:RUNNER_TEMP "doekit.zip"  # this version, rather than the latest release
           git archive --format=zip --prefix=doe/ -o $env:DOEKIT_ARCHIVE HEAD
           Get-Content install.ps1 -Raw | Invoke-Expression
-          if ($global:DoekitInstallFailed) { exit 1 }
+          if ($global:DoekitInstallFailed) { Write-Output "::error title=install.ps1 failed::$global:DoekitInstallError"; exit 1 }
           & "$env:DOEKIT_HOME\env\python.exe" .github\check_install.py
           if ($LASTEXITCODE -ne 0) { exit 1 }
           New-Item -ItemType Directory -Force -Path "$env:DOEKIT_HOME\doe\data\app_studies" | Out-Null
           Set-Content -NoNewline -Path "$env:DOEKIT_HOME\doe\data\app_studies\kept.txt" -Value "my study"
           Get-Content install.ps1 -Raw | Invoke-Expression
-          if ($global:DoekitInstallFailed) { exit 1 }
+          if ($global:DoekitInstallFailed) { Write-Output "::error title=install.ps1 failed when updating::$global:DoekitInstallError"; exit 1 }
           & "$env:DOEKIT_HOME\env\python.exe" .github\check_install.py --after-update
           if ($LASTEXITCODE -ne 0) { exit 1 }
